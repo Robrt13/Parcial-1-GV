@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Problema 2 - Parte A | Galería 3D</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #050505;
+      color: white;
+    }
+    canvas { display: block; }
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      width: min(420px, calc(100vw - 32px));
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(8, 12, 18, 0.72);
+      border: 1px solid rgba(255,255,255,0.18);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      line-height: 1.45;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+    #hud h1 {
+      font-size: 17px;
+      margin: 0 0 6px 0;
+      letter-spacing: 0.2px;
+    }
+    #hud p { margin: 5px 0; font-size: 13px; color: #e7e7e7; }
+    #hud strong { color: #ffffff; }
+    #crosshair {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      margin-left: -4px;
+      margin-top: -4px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 0 10px rgba(255,255,255,0.5);
+      z-index: 7;
+      pointer-events: none;
+    }
+    #blocker {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle, rgba(40,40,40,0.75), rgba(0,0,0,0.88));
+      z-index: 20;
+      cursor: pointer;
+    }
+    #instructions {
+      width: min(560px, calc(100vw - 40px));
+      text-align: center;
+      padding: 28px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: 0 18px 55px rgba(0,0,0,0.45);
+    }
+    #instructions h2 { margin: 0 0 12px; font-size: 28px; }
+    #instructions p { margin: 8px 0; color: #f0f0f0; }
+    #instructions .small { font-size: 13px; color: #cfcfcf; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <h1>Problema 2 — Parte A: Arquitectura de la galería</h1>
+    <p><strong>Controles:</strong> clic para caminar · W/A/S/D para moverse · mouse para mirar · Shift para correr · Esc para liberar el cursor.</p>
+  </div>
+  <div id="crosshair"></div>
+  <div id="blocker">
+    <div id="instructions">
+      <h2>Galería 3D</h2>
+      <p>Haz clic para entrar y caminar libremente por el museo.</p>
+      <p><strong>WASD</strong> moverse · <strong>Mouse</strong> mirar · <strong>Shift</strong> correr · <strong>Esc</strong> salir</p>
+      <p class="small">Este archivo fue creado desde cero para cumplir A.1, A.2 y A.3 del Problema 2.</p>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // ============================================================
+    // CONFIGURACIÓN BASE
+    // ============================================================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x08090c);
+    scene.fog = new THREE.Fog(0x08090c, 28, 55);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 120);
+    camera.position.set(0, 1.7, 12);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // A.3 Sombras en toda la sala
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    document.body.appendChild(renderer.domElement);
+
+    // ============================================================
+    // TEXTURAS PROCEDURALES DIFERENTES
+    // Se generan con CanvasTexture para que el HTML sea único y no dependa de archivos locales.
+    // ============================================================
+    function makeCanvasTexture(size, drawCallback, repeatX = 1, repeatY = 1) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      drawCallback(ctx, size);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(repeatX, repeatY);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      return texture;
+    }
+
+    // Piso: madera, tileada 8x8 como pide A.1
+    const floorTexture = makeCanvasTexture(512, (ctx, s) => {
+      ctx.fillStyle = '#7a4a24';
+      ctx.fillRect(0, 0, s, s);
+      for (let y = 0; y < 8; y++) {
+        const h = s / 8;
+        ctx.fillStyle = y % 2 === 0 ? '#8d592c' : '#6b3f1f';
+        ctx.fillRect(0, y * h, s, h);
+        ctx.strokeStyle = 'rgba(40,20,8,0.55)';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, y * h, s, h);
+        for (let i = 0; i < 18; i++) {
+          ctx.strokeStyle = `rgba(255,220,160,${0.05 + Math.random() * 0.07})`;
+          ctx.beginPath();
+          const yy = y * h + 8 + Math.random() * (h - 16);
+          ctx.moveTo(Math.random() * s, yy);
+          ctx.bezierCurveTo(s * 0.25, yy + Math.random() * 15, s * 0.75, yy - Math.random() * 15, s, yy + Math.random() * 8);
+          ctx.stroke();
+        }
+      }
+    }, 8, 8);
+
+    // Paredes: ladrillo/panel claro, diferente al piso
+    const wallTexture = makeCanvasTexture(512, (ctx, s) => {
+      ctx.fillStyle = '#d8d5cc';
+      ctx.fillRect(0, 0, s, s);
+      const brickH = 64;
+      const brickW = 128;
+      ctx.lineWidth = 4;
+      for (let y = 0; y < s; y += brickH) {
+        const offset = (Math.floor(y / brickH) % 2) * (brickW / 2);
+        for (let x = -offset; x < s; x += brickW) {
+          const shade = 205 + Math.floor(Math.random() * 25);
+          ctx.fillStyle = `rgb(${shade},${shade - 2},${shade - 10})`;
+          ctx.fillRect(x + 2, y + 2, brickW - 4, brickH - 4);
+          ctx.strokeStyle = 'rgba(115,115,115,0.35)';
+          ctx.strokeRect(x + 2, y + 2, brickW - 4, brickH - 4);
+        }
+      }
+    }, 4, 1);
+
+    // Techo: paneles oscuros, diferente al piso y a las paredes
+    const ceilingTexture = makeCanvasTexture(512, (ctx, s) => {
+      ctx.fillStyle = '#20232a';
+      ctx.fillRect(0, 0, s, s);
+      const step = 128;
+      for (let y = 0; y < s; y += step) {
+        for (let x = 0; x < s; x += step) {
+          ctx.fillStyle = (x + y) / step % 2 === 0 ? '#2b2e36' : '#181b22';
+          ctx.fillRect(x, y, step, step);
+          ctx.strokeStyle = 'rgba(255,255,255,0.09)';
+          ctx.lineWidth = 5;
+          ctx.strokeRect(x, y, step, step);
+        }
+      }
+    }, 8, 8);
+
+    // ============================================================
+    // A.1 SALA PRINCIPAL: PlaneGeometry para piso, techo y paredes
+    // Dimensiones mínimas: 30 x 30 unidades, 6 unidades de alto
+    // ============================================================
+    const roomWidth = 30;
+    const roomDepth = 30;
+    const roomHeight = 6;
+    const halfW = roomWidth / 2;
+    const halfD = roomDepth / 2;
+
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      map: floorTexture,
+      roughness: 0.62,
+      metalness: 0.04
+    });
+
+    const wallMaterial = new THREE.MeshStandardMaterial({
+      map: wallTexture,
+      roughness: 0.88,
+      metalness: 0.02
+    });
+
+    const ceilingMaterial = new THREE.MeshStandardMaterial({
+      map: ceilingTexture,
+      roughness: 0.72,
+      metalness: 0.08
+    });
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomDepth), floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomDepth), ceilingMaterial);
+    ceiling.position.y = roomHeight;
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.receiveShadow = true;
+    scene.add(ceiling);
+
+    function createWall(name, width, height, position, rotationY = 0) {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(width, height), wallMaterial);
+      wall.name = name;
+      wall.position.copy(position);
+      wall.rotation.y = rotationY;
+      wall.receiveShadow = true;
+      scene.add(wall);
+      return wall;
+    }
+
+    createWall('Pared trasera', roomWidth, roomHeight, new THREE.Vector3(0, roomHeight / 2, -halfD), 0);
+    createWall('Pared frontal', roomWidth, roomHeight, new THREE.Vector3(0, roomHeight / 2, halfD), Math.PI);
+    createWall('Pared izquierda', roomDepth, roomHeight, new THREE.Vector3(-halfW, roomHeight / 2, 0), Math.PI / 2);
+    createWall('Pared derecha', roomDepth, roomHeight, new THREE.Vector3(halfW, roomHeight / 2, 0), -Math.PI / 2);
+
+    // ============================================================
+    // A.2 PEDESTALES PARA EXHIBICIONES
+    // 5 pedestales con primitivas, material pulido y distribución simétrica
+    // ============================================================
+    const pedestalMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf1eee5,
+      roughness: 0.18,
+      metalness: 0.18
+    });
+
+    const exhibitionMaterialA = new THREE.MeshStandardMaterial({ color: 0xc08b47, roughness: 0.35, metalness: 0.75 });
+    const exhibitionMaterialB = new THREE.MeshStandardMaterial({ color: 0x6688cc, roughness: 0.4, metalness: 0.25 });
+
+    const pedestalPositions = [
+      new THREE.Vector3(-8, 0, -7),
+      new THREE.Vector3(8, 0, -7),
+      new THREE.Vector3(-8, 0, 5),
+      new THREE.Vector3(8, 0, 5),
+      new THREE.Vector3(0, 0, -1)
+    ];
+
+    const exhibitions = [];
+
+    pedestalPositions.forEach((pos, index) => {
+      const pedestal = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.05, 1.25, 1.25, 48),
+        pedestalMaterial
+      );
+      pedestal.position.set(pos.x, 0.625, pos.z);
+      pedestal.castShadow = true;
+      pedestal.receiveShadow = true;
+      pedestal.name = `Pedestal ${index + 1}`;
+      scene.add(pedestal);
+
+      // Objetos simples temporales para demostrar castShadow de exhibiciones.
+      // En la Parte B pueden reemplazarse por las 5 piezas exigidas. (GABY)
+      let geometry;
+      if (index === 0) geometry = new THREE.TorusKnotGeometry(0.45, 0.15, 80, 12);
+      else if (index === 1) geometry = new THREE.IcosahedronGeometry(0.58, 1);
+      else if (index === 2) geometry = new THREE.SphereGeometry(0.55, 32, 16);
+      else if (index === 3) geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+      else geometry = new THREE.ConeGeometry(0.55, 1.05, 40);
+
+      const art = new THREE.Mesh(geometry, index % 2 === 0 ? exhibitionMaterialA : exhibitionMaterialB);
+      art.position.set(pos.x, 1.75, pos.z);
+      art.castShadow = true;       // A.3: exhibiciones emiten sombra
+      art.receiveShadow = true;
+      art.name = `Exhibición temporal ${index + 1}`;
+      scene.add(art);
+      exhibitions.push(art);
+    });
+
+    // Guía temporal: queda listo con castShadow para cumplir A.3 hasta que se agregue el GLTF en D.1
+    const guide = new THREE.Group();
+    const guideBody = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.35, 1.1, 8, 16),
+      new THREE.MeshStandardMaterial({ color: 0x2c7be5, roughness: 0.45 })
+    );
+    guideBody.position.y = 1.05;
+    guideBody.castShadow = true;
+    guideBody.receiveShadow = true;
+
+    const guideHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.27, 24, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffd2a6, roughness: 0.55 })
+    );
+    guideHead.position.y = 1.9;
+    guideHead.castShadow = true;
+    guide.add(guideBody, guideHead);
+    guide.position.set(0, 0, 12.2);
+    guide.name = 'Guía temporal del museo';
+    scene.add(guide);
+
+    // ============================================================
+    // LUCES PARA VERIFICAR SOMBRAS Y VOLUMEN DE LA SALA
+    // ============================================================
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.16);
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.SpotLight(0xffffff, 90, 45, Math.PI / 5, 0.45, 1.2);
+    mainLight.position.set(0, 5.7, 4);
+    mainLight.target.position.set(0, 0, -2);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 1024;
+    mainLight.shadow.mapSize.height = 1024;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 60;
+    scene.add(mainLight, mainLight.target);
+
+    const sideLight = new THREE.PointLight(0xfff1d0, 16, 22);
+    sideLight.position.set(-10, 4.8, -10);
+    sideLight.castShadow = true;
+    sideLight.shadow.mapSize.width = 1024;
+    sideLight.shadow.mapSize.height = 1024;
+    scene.add(sideLight);
+
+    const fillLight = new THREE.PointLight(0xcad8ff, 8, 22);
+    fillLight.position.set(10, 4.5, 9);
+    scene.add(fillLight);
+
+    // ============================================================
+    // CAMINAR LIBREMENTE: PointerLockControls
+    // ============================================================
+    const controls = new PointerLockControls(camera, document.body);
+    scene.add(controls.getObject());
+
+    const blocker = document.getElementById('blocker');
+    const instructions = document.getElementById('instructions');
+
+    instructions.addEventListener('click', () => controls.lock());
+    blocker.addEventListener('click', () => controls.lock());
+
+    controls.addEventListener('lock', () => {
+      blocker.style.display = 'none';
+    });
+
+    controls.addEventListener('unlock', () => {
+      blocker.style.display = 'grid';
+    });
+
+    const keys = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      run: false
+    };
+
+    document.addEventListener('keydown', (event) => {
+      switch (event.code) {
+        case 'KeyW': keys.forward = true; break;
+        case 'KeyS': keys.backward = true; break;
+        case 'KeyA': keys.left = true; break;
+        case 'KeyD': keys.right = true; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': keys.run = true; break;
+      }
+    });
+
+    document.addEventListener('keyup', (event) => {
+      switch (event.code) {
+        case 'KeyW': keys.forward = false; break;
+        case 'KeyS': keys.backward = false; break;
+        case 'KeyA': keys.left = false; break;
+        case 'KeyD': keys.right = false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': keys.run = false; break;
+      }
+    });
+
+    const clock = new THREE.Clock();
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+
+    function updatePlayerMovement(delta) {
+      if (!controls.isLocked) return;
+
+      velocity.x -= velocity.x * 10.0 * delta;
+      velocity.z -= velocity.z * 10.0 * delta;
+
+      direction.z = Number(keys.forward) - Number(keys.backward);
+      direction.x = Number(keys.right) - Number(keys.left);
+      direction.normalize();
+
+      const speed = keys.run ? 85 : 45;
+
+      if (keys.forward || keys.backward) velocity.z -= direction.z * speed * delta;
+      if (keys.left || keys.right) velocity.x -= direction.x * speed * delta;
+
+      controls.moveRight(-velocity.x * delta);
+      controls.moveForward(-velocity.z * delta);
+
+      // Mantener la cámara dentro de la sala y a altura de una persona.
+      const object = controls.getObject();
+      object.position.y = 1.7;
+      object.position.x = THREE.MathUtils.clamp(object.position.x, -halfW + 0.8, halfW - 0.8);
+      object.position.z = THREE.MathUtils.clamp(object.position.z, -halfD + 0.8, halfD - 0.8);
+    }
+
+    // ============================================================
+    // ANIMACIÓN
+    // ============================================================
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.elapsedTime;
+
+      updatePlayerMovement(delta);
+
+      exhibitions.forEach((art, index) => {
+        art.rotation.y += delta * (0.5 + index * 0.08);
+        if (index === 4) art.position.y = 1.75 + Math.sin(elapsed * 1.4) * 0.08;
+      });
+
+      guide.rotation.y = Math.sin(elapsed * 0.5) * 0.18;
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // ============================================================
+    // RESPONSIVE
+    // ============================================================
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
