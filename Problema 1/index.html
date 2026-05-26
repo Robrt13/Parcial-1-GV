@@ -82,7 +82,7 @@
 
     // A.3 - LUNAS
 
-    //PLANETA 1
+    // PLANETA 1
     // Agregar planeta 1 a un grupo
     const grupoPlaneta1 = new THREE.Group();
     grupoPlaneta1.add(planeta1);
@@ -101,7 +101,12 @@
     // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 1
     const grupoLuna1 = new THREE.Group();
     grupoLuna1.add(luna1);
-    planeta1.add(grupoLuna1); // La luna orbita alrededor del planeta 1
+
+    // Posicionar el grupo de la luna en la misma posición del planeta
+    grupoLuna1.position.x = 12;
+
+    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoPlaneta1.add(grupoLuna1);
 
     // PLANETA 2
     // Agregar planeta 2 a un grupo y agregar anillo al planeta
@@ -123,7 +128,12 @@
     // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 2
     const grupoLuna2 = new THREE.Group();
     grupoLuna2.add(luna2);
-    planeta2.add(grupoLuna2); // La luna orbita alrededor del planeta 2
+
+    // Posicionar el grupo de la luna en la misma posición del planeta
+    grupoLuna2.position.x = 18;
+
+    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoPlaneta2.add(grupoLuna2);
 
     // PLANETA 3
     // Agregar planeta 3 a un grupo
@@ -144,7 +154,12 @@
     // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 3
     const grupoLuna3 = new THREE.Group();
     grupoLuna3.add(luna3);
-    planeta3.add(grupoLuna3); // La luna orbita alrededor del planeta 3
+
+    // Posicionar el grupo de la luna en la misma posición del planeta
+    grupoLuna3.position.x = 30;
+
+    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoPlaneta3.add(grupoLuna3);
 
     // Velocidades de rotación y órbita
     const velocidades = {
