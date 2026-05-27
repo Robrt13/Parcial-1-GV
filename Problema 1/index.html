@@ -1,3 +1,197 @@
-    // ============================================================
-    // Archivo Place holder para el problema 1
-    // ============================================================
+<DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema Solar</title>
+    <style>
+        body {margin: 0; overflow: hidden; background: black;} canvas {display: block;}
+    </style>
+</head>
+
+<body>
+<!-- Three.js desde CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+ 
+<script>
+
+    // Configuración básica de la escena y cámara
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 30, 40);
+    camera.lookAt(0, 0, 0);
+
+    // Renderizador
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Redimensión de la ventana
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // A.1 - SOL CENTRAL
+
+    // Creación del sol
+    const solGeometria = new THREE.SphereGeometry(4, 32, 32);
+    const solMaterial = new THREE.MeshBasicMaterial({color: 0xffaa00});
+    const sol = new THREE.Mesh(solGeometria, solMaterial);
+    scene.add(sol);
+
+    // Luz del sol
+    const luzSol = new THREE.PointLight(0xfbff8f, 75, 300);
+    luzSol.position.set(0, 0, 0);
+    scene.add(luzSol);
+
+    // Rayos solares
+    const luzAmbiente = new THREE.AmbientLight(0xffffff, 0.15);
+    scene.add(luzAmbiente);
+
+    // A.2 - PLANETAS
+
+    // Función para textura 
+    const loader = new THREE.TextureLoader();
+    const texturaP1 = loader.load('https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/image/jupiter---callisto/Jupiter%20-%20Callisto.jpg');
+
+    // Planeta 1
+    const planeta1 = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 32, 32),
+        new THREE.MeshStandardMaterial({map: texturaP1, roughness: 0.8, metalness: 0.1})
+    );
+
+    // Planeta 2
+    const planeta2 = new THREE.Mesh(
+        new THREE.SphereGeometry(2.2, 32, 32),
+        new THREE.MeshStandardMaterial({color: 0xbf3813, roughness: 0.4, metalness: 0.5})
+    );
+    
+    // Anillos del planeta 2
+    const anillo2 = new THREE.Mesh(
+        new THREE.TorusGeometry(2.5, 0.3, 8, 60),
+        new THREE.MeshStandardMaterial({color: 0xc8a870})
+    );
+    anillo2.rotation.x = Math.PI / 2.5; //Inclinación del anillo
+
+    // Planeta 3
+    const planeta3 = new THREE.Mesh(
+        new THREE.SphereGeometry(2.8, 32, 32),
+        new THREE.MeshPhongMaterial({color: 0x112b96, shininess: 120})
+    );
+
+    // A.3 - LUNAS
+
+    // PLANETA 1
+    // Agregar planeta 1 a un grupo
+    const grupoPlaneta1 = new THREE.Group();
+    grupoPlaneta1.add(planeta1);
+    scene.add(grupoPlaneta1);
+
+    // Posicionar planeta 1
+    planeta1.position.x = 12;
+
+    // Luna del planeta 1
+    const luna1 = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 16, 16),
+        new THREE.MeshStandardMaterial({color: 0xaaaaaa})
+    );
+    luna1.position.x = 2; // Distancia de la luna al planeta
+
+    // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 1
+    const grupoLuna1 = new THREE.Group();
+    grupoLuna1.add(luna1);
+
+    // Posicionar el grupo de la luna en la misma posición del planeta
+    grupoLuna1.position.x = 12;
+
+    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoPlaneta1.add(grupoLuna1);
+
+    // PLANETA 2
+    // Agregar planeta 2 a un grupo y agregar anillo al planeta
+    const grupoPlaneta2 = new THREE.Group();
+    planeta2.add(anillo2);
+    grupoPlaneta2.add(planeta2);
+    scene.add(grupoPlaneta2);
+
+    // Posicionar planeta 2
+    planeta2.position.x = 18;
+
+    // Luna del planeta 2
+    const luna2 = new THREE.Mesh(
+        new THREE.SphereGeometry(0.7, 16, 16),
+        new THREE.MeshStandardMaterial({color: 0x998877})
+    );
+    luna2.position.x = 4.5; // Distancia de la luna al planeta 2
+
+    // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 2
+    const grupoLuna2 = new THREE.Group();
+    grupoLuna2.add(luna2);
+
+    // Posicionar el grupo de la luna en la misma posición del planeta
+    grupoLuna2.position.x = 18;
+
+    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoPlaneta2.add(grupoLuna2);
+
+    // PLANETA 3
+    // Agregar planeta 3 a un grupo
+    const grupoPlaneta3 = new THREE.Group();
+    grupoPlaneta3.add(planeta3);
+    scene.add(grupoPlaneta3);
+
+    // Posicionar planeta 3
+    planeta3.position.x = 30;
+
+    // Luna del planeta 3
+    const luna3 = new THREE.Mesh(
+        new THREE.SphereGeometry(1.2, 16, 16),
+        new THREE.MeshStandardMaterial({color: 0x777777})
+    );
+    luna3.position.x = 6; // Distancia de la luna al planeta 3
+
+    // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 3
+    const grupoLuna3 = new THREE.Group();
+    grupoLuna3.add(luna3);
+
+    // Posicionar el grupo de la luna en la misma posición del planeta
+    grupoLuna3.position.x = 30;
+
+    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoPlaneta3.add(grupoLuna3);
+
+    // Velocidades de rotación y órbita
+    const velocidades = {
+        sol: 0.002,
+        p1: 0.026,
+        p2: 0.015,
+        p3: 0.008,
+        l1: 0.04,
+        l2: 0.03,
+        l3: 0.02
+    };
+
+    // Animación
+    function animar() {
+        requestAnimationFrame(animar);
+
+        // Rotación del sol
+        sol.rotation.y += velocidades.sol;
+
+        // Órbita y rotación de los planetas
+        grupoPlaneta1.rotation.y += velocidades.p1;
+        grupoPlaneta2.rotation.y += velocidades.p2;
+        grupoPlaneta3.rotation.y += velocidades.p3;
+
+        // Órbita y rotación de las lunas
+        grupoLuna1.rotation.y += velocidades.l1;
+        grupoLuna2.rotation.y += velocidades.l2;
+        grupoLuna3.rotation.y += velocidades.l3;
+
+        renderer.render(scene, camera);
+    }
+    animar();
+</script>
+</body>
+</html>
