@@ -323,31 +323,23 @@
     scene.add(guide);
 
     // ============================================================
-    // LUCES PARA VERIFICAR SOMBRAS Y VOLUMEN DE LA SALA
+    // ILUMINACIÓN INTERIOR
     // ============================================================
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.16);
-    scene.add(ambientLight);
+    const roomLightsConfig = [
+      {position: new THREE.Vector3(5, roomHeight - 1, 5), color: 0xff0000, intensity: 10},
+      {position: new THREE.Vector3(5, roomHeight - 1, -5), color: 0x0000ff, intensity: 15},
+      {position: new THREE.Vector3(-5, roomHeight - 1, 5), color: 0xffff00, intensity: 20},
+      {position: new THREE.Vector3(-5, roomHeight - 1, -5), color: 0x00ff00, intensity: 25},
+    ];
 
-    const mainLight = new THREE.SpotLight(0xffffff, 90, 45, Math.PI / 5, 0.45, 1.2);
-    mainLight.position.set(0, 5.7, 4);
-    mainLight.target.position.set(0, 0, -2);
-    mainLight.castShadow = true;
-    mainLight.shadow.mapSize.width = 1024;
-    mainLight.shadow.mapSize.height = 1024;
-    mainLight.shadow.camera.near = 0.5;
-    mainLight.shadow.camera.far = 60;
-    scene.add(mainLight, mainLight.target);
-
-    const sideLight = new THREE.PointLight(0xfff1d0, 16, 22);
-    sideLight.position.set(-10, 4.8, -10);
-    sideLight.castShadow = true;
-    sideLight.shadow.mapSize.width = 1024;
-    sideLight.shadow.mapSize.height = 1024;
-    scene.add(sideLight);
-
-    const fillLight = new THREE.PointLight(0xcad8ff, 8, 22);
-    fillLight.position.set(10, 4.5, 9);
-    scene.add(fillLight);
+    roomLightsConfig.forEach((config, index) => {
+      const roomLight = new THREE.PointLight(config.color, config.intensity);
+      roomLight.position.copy(config.position);
+      roomLight.castShadow = true;
+      roomLight.shadow.mapSize.width = 1024;
+      roomLight.shadow.mapSize.height = 1024;
+      scene.add(roomLight);
+    });
 
     // ============================================================
     // CAMINAR LIBREMENTE: PointerLockControls
