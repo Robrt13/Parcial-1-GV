@@ -66,10 +66,16 @@
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.2);
       box-shadow: 0 18px 55px rgba(0,0,0,0.45);
+      display: none;
+      pointer-events: none;
     }
     #instructions h2 { margin: 0 0 12px; font-size: 28px; }
     #instructions p { margin: 8px 0; color: #f0f0f0; }
     #instructions .small { font-size: 13px; color: #cfcfcf; margin-top: 16px; }
+    #loading-screen p { margin-bottom: 12px; font-size: 15px; }
+    #loading-screen div { width: 280px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 99px; overflow: hidden; }
+    #loading-bar { height: 100%; width: 0%; background: #ffffff; border-radius: 99px; transition: width 0.2s ease; }
+    #loading-pct { margin-top: 10px; font-size: 13px; color: #aaa; }
   </style>
 </head>
 <body>
@@ -83,6 +89,13 @@
       <h2>Galería 3D</h2>
       <p>Haz clic para entrar y caminar libremente por el museo.</p>
       <p><strong>WASD</strong> moverse · <strong>Mouse</strong> mirar · <strong>Shift</strong> correr · <strong>Esc</strong> salir</p>
+    </div>
+    <div id="loading-screen">
+      <p>Cargando al guía...</p>
+      <div>
+        <div id="loading-bar"></div>
+      </div>
+      <p id="loading-pct">0%</p>
     </div>
   </div>
 
@@ -98,6 +111,7 @@
   <script type="module">
     import * as THREE from 'three';
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     // ============================================================
     // CONFIGURACIÓN BASE
@@ -301,26 +315,54 @@
       exhibitions.push(art);
     });
 
-    // Guía temporal: queda listo con castShadow para cumplir A.3 hasta que se agregue el GLTF en D.1
-    const guide = new THREE.Group();
-    const guideBody = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.35, 1.1, 8, 16),
-      new THREE.MeshStandardMaterial({ color: 0x2c7be5, roughness: 0.45 })
-    );
-    guideBody.position.y = 1.05;
-    guideBody.castShadow = true;
-    guideBody.receiveShadow = true;
+    // ============================================================
+    // GUÍA DEL MUSEO
+    // ============================================================
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingBar    = document.getElementById('loading-bar');
+    const loadingPct    = document.getElementById('loading-pct');
 
-    const guideHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.27, 24, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffd2a6, roughness: 0.55 })
+    let mixer;
+    const loader = new GLTFLoader();
+    loader.load(
+      'https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
+      (gltf) => {
+        const guide = gltf.scene;
+        guide.position.set(-2, 0, 12);
+        guide.scale.set(0.5, 0.5, 0.5);
+        guide.rotation.y = Math.PI / 2;
+        guide.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        scene.add(guide);
+
+        mixer = new THREE.AnimationMixer(guide);
+        mixer.clipAction(gltf.animations[2]).play();
+
+        loadingBar.style.width = '100%';
+        loadingPct.textContent = '100%';
+
+        setTimeout(() => {
+          loadingScreen.style.display = 'none';
+          document.getElementById('instructions').style.display = 'block';
+          enableEntry();
+        }, 1000);
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const pct = (xhr.loaded / xhr.total) * 100;
+          loadingBar.style.width = pct + '%';
+          loadingPct.textContent = Math.round(pct) + '%';
+        }
+      },
+      (error) => {
+        console.error('Error al cargar el modelo:', error);
+        loadingPct.textContent = 'Error al cargar';
+      }
     );
-    guideHead.position.y = 1.9;
-    guideHead.castShadow = true;
-    guide.add(guideBody, guideHead);
-    guide.position.set(0, 0, 12.2);
-    guide.name = 'Guía temporal del museo';
-    scene.add(guide);
 
     // ============================================================
     // LUCES PARA VERIFICAR SOMBRAS Y VOLUMEN DE LA SALA
@@ -358,8 +400,10 @@
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
 
-    instructions.addEventListener('click', () => controls.lock());
-    blocker.addEventListener('click', () => controls.lock());
+    function enableEntry() {
+      instructions.addEventListener('click', () => controls.lock());
+      blocker.addEventListener('click', () => controls.lock());
+    }
 
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
@@ -443,7 +487,7 @@
         if (index === 4) art.position.y = 1.75 + Math.sin(elapsed * 1.4) * 0.08;
       });
 
-      guide.rotation.y = Math.sin(elapsed * 0.5) * 0.18;
+      if (mixer) mixer.update(delta);
       renderer.render(scene, camera);
     }
 
