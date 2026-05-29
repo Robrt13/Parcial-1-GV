@@ -161,6 +161,122 @@
     // La luna orbita alrededor del planeta mediante su propio grupo
     grupoPlaneta3.add(grupoLuna3);
 
+    // ============================================================
+    //  PARTE B — EFECTOS VISUALES
+    //  (Solo se AGREGA contenido nuevo. No se modifica la Parte A.)
+    // ============================================================
+
+    // ------------------------------------------------------------
+    // B.1 - FONDO ESTELAR
+    // Sistema de Points con 5000 partículas distribuidas de forma
+    // aleatoria y uniforme sobre una esfera de gran radio.
+    // ------------------------------------------------------------
+    const cantidadEstrellas = 5000;                                  // > 3000 (requisito mínimo)
+    const posicionesEstrellas = new Float32Array(cantidadEstrellas * 3);
+
+    for (let i = 0; i < cantidadEstrellas; i++) {
+        // Dirección aleatoria UNIFORME sobre la esfera (método de muestreo esférico)
+        const u = Math.random();
+        const v = Math.random();
+        const theta = 2 * Math.PI * u;          // ángulo azimutal
+        const phi = Math.acos(2 * v - 1);       // ángulo polar (evita acumulación en los polos)
+        const radio = 300 + Math.random() * 200; // radio grande: entre 300 y 500 (dentro del far de la cámara = 1000)
+
+        posicionesEstrellas[i * 3]     = radio * Math.sin(phi) * Math.cos(theta); // x
+        posicionesEstrellas[i * 3 + 1] = radio * Math.sin(phi) * Math.sin(theta); // y
+        posicionesEstrellas[i * 3 + 2] = radio * Math.cos(phi);                   // z
+    }
+
+    const geometriaEstrellas = new THREE.BufferGeometry();
+    geometriaEstrellas.setAttribute('position', new THREE.BufferAttribute(posicionesEstrellas, 3));
+
+    const materialEstrellas = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.7,
+        sizeAttenuation: true
+    });
+
+    const estrellas = new THREE.Points(geometriaEstrellas, materialEstrellas);
+    scene.add(estrellas);
+
+    // ------------------------------------------------------------
+    // B.2 - CINTURÓN DE ASTEROIDES
+    // Points + BufferGeometry, entre el Planeta 2 (r=18) y el
+    // Planeta 3 (r=30). Distribución en anillo: ángulo aleatorio
+    // + radio aleatorio dentro de un rango. Rota lentamente en Y.
+    // ------------------------------------------------------------
+    const cantidadAsteroides = 2500;                                  // > 2000 (requisito mínimo)
+    const posicionesAsteroides = new Float32Array(cantidadAsteroides * 3);
+
+    const radioInterno = 21;   // queda por fuera de la órbita del Planeta 2 (18)
+    const radioExterno = 27;   // queda por dentro de la órbita del Planeta 3 (30)
+
+    for (let i = 0; i < cantidadAsteroides; i++) {
+        const angulo = Math.random() * Math.PI * 2;                       // ángulo aleatorio (0 a 2π)
+        const radio = radioInterno + Math.random() * (radioExterno - radioInterno); // radio aleatorio dentro del rango
+
+        posicionesAsteroides[i * 3]     = Math.cos(angulo) * radio;       // x  -> plano XZ (horizontal)
+        posicionesAsteroides[i * 3 + 1] = (Math.random() - 0.5) * 1.2;    // y  -> ligero grosor vertical del cinturón
+        posicionesAsteroides[i * 3 + 2] = Math.sin(angulo) * radio;       // z
+    }
+
+    const geometriaAsteroides = new THREE.BufferGeometry();
+    geometriaAsteroides.setAttribute('position', new THREE.BufferAttribute(posicionesAsteroides, 3));
+
+    const materialAsteroides = new THREE.PointsMaterial({
+        color: 0xaaaaaa,        // gris-blanco sugerido
+        size: 0.25,
+        sizeAttenuation: true
+    });
+
+    const cinturonAsteroides = new THREE.Points(geometriaAsteroides, materialAsteroides);
+    scene.add(cinturonAsteroides);
+
+    // ------------------------------------------------------------
+    // B.3 - LÍNEAS DE ÓRBITA
+    // EllipseCurve + BufferGeometry + THREE.Line, una por planeta.
+    // El radio es EXACTAMENTE la distancia orbital de cada planeta.
+    // ------------------------------------------------------------
+    function crearOrbita(radio) {
+        const curva = new THREE.EllipseCurve(
+            0, 0,          // centro (x, y)
+            radio, radio,  // radioX = radioY  -> círculo perfecto
+            0, 2 * Math.PI,// ángulo inicial y final
+            false,         // sentido horario
+            0              // rotación
+        );
+
+        const puntos = curva.getPoints(128); // 128 segmentos -> círculo suave
+        const geometria = new THREE.BufferGeometry().setFromPoints(puntos);
+
+        const material = new THREE.LineBasicMaterial({
+            color: 0x555555,    // gris tenue / oscuro
+            transparent: true,
+            opacity: 0.35       // sutil
+        });
+
+        const linea = new THREE.Line(geometria, material);
+        linea.rotation.x = Math.PI / 2; // pasar la curva del plano XY al plano XZ (plano orbital)
+        return linea;
+    }
+
+    // Una línea por planeta, con el radio igual a su distancia orbital
+    scene.add(crearOrbita(12)); // Planeta 1  (planeta1.position.x = 12)
+    scene.add(crearOrbita(18)); // Planeta 2  (planeta2.position.x = 18)
+    scene.add(crearOrbita(30)); // Planeta 3  (planeta3.position.x = 30)
+
+    // ------------------------------------------------------------
+    // B.4 - ILUMINACIÓN AMBIENTE
+    // REQUISITO YA CUMPLIDO EN LA PARTE A: arriba se creó
+    // 'luzAmbiente' = new THREE.AmbientLight(0xffffff, 0.15), con
+    // intensidad 0.15, que está dentro del rango pedido (0.05–0.15).
+    // No se agrega otra para no duplicar la luz ambiente.
+    // ------------------------------------------------------------
+
+    // Velocidades de rotación de los efectos de la Parte B
+    const velCinturon = 0.0008;   // rotación lenta del cinturón de asteroides en Y
+    const velEstrellas = 0.0002;  // rotación muy lenta del fondo estelar (detalle opcional)
+
     // Velocidades de rotación y órbita
     const velocidades = {
         sol: 0.002,
@@ -188,6 +304,10 @@
         grupoLuna1.rotation.y += velocidades.l1;
         grupoLuna2.rotation.y += velocidades.l2;
         grupoLuna3.rotation.y += velocidades.l3;
+
+        // --- PARTE B: rotación de efectos visuales (líneas agregadas, no modifican la Parte A) ---
+        cinturonAsteroides.rotation.y += velCinturon; // B.2: el cinturón rota lentamente en Y
+        estrellas.rotation.y += velEstrellas;         // B.1: leve giro del fondo estelar
 
         renderer.render(scene, camera);
     }
