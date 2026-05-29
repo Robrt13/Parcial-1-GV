@@ -76,6 +76,26 @@
     #loading-screen div { width: 280px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 99px; overflow: hidden; }
     #loading-bar { height: 100%; width: 0%; background: #ffffff; border-radius: 99px; transition: width 0.2s ease; }
     #loading-pct { margin-top: 10px; font-size: 13px; color: #aaa; }
+    #proximity-panel {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(420px, calc(100vw - 32px));
+      padding: 16px 20px;
+      border-radius: 14px;
+      background: rgba(8, 12, 18, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    #proximity-panel.visible { opacity: 1; }
+    #proximity-panel h3 { margin: 0 0 6px 0; font-size: 16px; color: #ffffff; letter-spacing: 0.3px; }
+    #proximity-panel p { margin: 0; font-size: 13px; color: #d0d0d0; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -97,6 +117,10 @@
       </div>
       <p id="loading-pct">0%</p>
     </div>
+  </div>
+  <div id="proximity-panel">
+    <h3 id="panel-name"></h3>
+    <p id="panel-description"></p>
   </div>
 
   <script type="importmap">
@@ -285,6 +309,14 @@
     ];
 
     const exhibitions = [];
+    // Cambiar la descripción según las exhibiciones que se agreguen en la Parte B. (GABY)
+    const exhibitionData = [
+      {name: "Sample name 1", description: "Sample description 1"},
+      {name: "Sample name 2", description: "Sample description 2"},
+      {name: "Sample name 3", description: "Sample description 3"},
+      {name: "Sample name 4", description: "Sample description 4"},
+      {name: "Sample name 5", description: "Sample description 5"}
+    ];
 
     pedestalPositions.forEach((pos, index) => {
       const pedestal = new THREE.Mesh(
@@ -310,9 +342,13 @@
       art.position.set(pos.x, 1.75, pos.z);
       art.castShadow = true;       // A.3: exhibiciones emiten sombra
       art.receiveShadow = true;
-      art.name = `Exhibición temporal ${index + 1}`;
+      art.name = exhibitionData[index].name;
       scene.add(art);
-      exhibitions.push(art);
+      exhibitions.push({
+        mesh: art,
+        position: new THREE.Vector3(pos.x, 1.75, pos.z),
+        data: exhibitionData[index]
+      });
     });
 
     // ============================================================
@@ -475,16 +511,47 @@
     // ============================================================
     // ANIMACIÓN
     // ============================================================
+    const panel         = document.getElementById('proximity-panel');
+    const panelName     = document.getElementById('panel-name');
+    const panelDesc     = document.getElementById('panel-description');
+    const PROXIMITY_RADIUS = 5;
+    let   activeExhibition = null;
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const elapsed = clock.elapsedTime;
 
       updatePlayerMovement(delta);
+      // ============================================================
+      // DETECCIÓN DE EXHIBICIONES CERCANAS
+      // ============================================================
+      const camPos = controls.getObject().position;
+      let nearest = null;
+      let nearestDist = Infinity;
 
-      exhibitions.forEach((art, index) => {
-        art.rotation.y += delta * (0.5 + index * 0.08);
-        if (index === 4) art.position.y = 1.75 + Math.sin(elapsed * 1.4) * 0.08;
+      exhibitions.forEach((item) => {
+        const dist = camPos.distanceTo(item.position);
+        if (dist < PROXIMITY_RADIUS && dist < nearestDist) {
+          nearestDist = dist;
+          nearest = item;
+        }
+      });
+
+      if (nearest !== activeExhibition) {
+        activeExhibition = nearest;
+
+        if (nearest) {
+          panelName.textContent = nearest.data.name;
+          panelDesc.textContent = nearest.data.description;
+          panel.classList.add('visible');
+        } else {
+          panel.classList.remove('visible');
+        }
+      }
+
+      exhibitions.forEach((item, index) => {
+        item.mesh.rotation.y += delta * (0.5 + index * 0.08);
+        if (index === 4) item.mesh.position.y = 1.75 + Math.sin(elapsed * 1.4) * 0.08;
       });
 
       if (mixer) mixer.update(delta);
