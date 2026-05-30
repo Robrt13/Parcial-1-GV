@@ -1,194 +1,187 @@
-<DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Sistema Solar</title>
     <style>
-        body {margin: 0; overflow: hidden; background: black;} canvas {display: block;}
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+        }
+
+        canvas {
+            display: block;
+        }
     </style>
 </head>
 
 <body>
-<!-- Three.js desde CDN -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
- 
-<script>
 
-    // Configuración básica de la escena y cámara
+<script>
+    // ============================================================
+    // CONFIGURACIÓN BASE
+    // ============================================================
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+    const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+    );
     camera.position.set(0, 30, 40);
     camera.lookAt(0, 0, 0);
 
-    // Renderizador
-    const renderer = new THREE.WebGLRenderer({antialias: true});
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Redimensión de la ventana
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // A.1 - SOL CENTRAL
+    // ============================================================
+    // PARTE A — ESCENA BASE Y OBJETOS
+    // ============================================================
 
-    // Creación del sol
+    // A.1 - Sol central
     const solGeometria = new THREE.SphereGeometry(4, 32, 32);
-    const solMaterial = new THREE.MeshBasicMaterial({color: 0xffaa00});
+    const solMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
     const sol = new THREE.Mesh(solGeometria, solMaterial);
     scene.add(sol);
 
-    // Luz del sol
     const luzSol = new THREE.PointLight(0xfbff8f, 75, 300);
     luzSol.position.set(0, 0, 0);
     scene.add(luzSol);
 
-    // Rayos solares
     const luzAmbiente = new THREE.AmbientLight(0xffffff, 0.15);
     scene.add(luzAmbiente);
 
-    // A.2 - PLANETAS
-
-    // Función para textura 
+    // A.2 - Planetas con materiales diferenciados
     const loader = new THREE.TextureLoader();
-    const texturaP1 = loader.load('https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/image/jupiter---callisto/Jupiter%20-%20Callisto.jpg');
 
-    // Planeta 1
+    const texturaP1 = loader.load(
+        'https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/image/jupiter---callisto/Jupiter%20-%20Callisto.jpg'
+    );
+
     const planeta1 = new THREE.Mesh(
         new THREE.SphereGeometry(1, 32, 32),
-        new THREE.MeshStandardMaterial({map: texturaP1, roughness: 0.8, metalness: 0.1})
+        new THREE.MeshStandardMaterial({
+            map: texturaP1,
+            roughness: 0.8,
+            metalness: 0.1
+        })
     );
 
-    // Planeta 2
     const planeta2 = new THREE.Mesh(
         new THREE.SphereGeometry(2.2, 32, 32),
-        new THREE.MeshStandardMaterial({color: 0xbf3813, roughness: 0.4, metalness: 0.5})
+        new THREE.MeshStandardMaterial({
+            color: 0xbf3813,
+            roughness: 0.4,
+            metalness: 0.5
+        })
     );
-    
-    // Anillos del planeta 2
+
     const anillo2 = new THREE.Mesh(
         new THREE.TorusGeometry(2.5, 0.3, 8, 60),
-        new THREE.MeshStandardMaterial({color: 0xc8a870})
+        new THREE.MeshStandardMaterial({ color: 0xc8a870 })
     );
-    anillo2.rotation.x = Math.PI / 2.5; //Inclinación del anillo
+    anillo2.rotation.x = Math.PI / 2.5;
 
-    // Planeta 3
     const planeta3 = new THREE.Mesh(
         new THREE.SphereGeometry(2.8, 32, 32),
-        new THREE.MeshPhongMaterial({color: 0x112b96, shininess: 120})
+        new THREE.MeshPhongMaterial({
+            color: 0x112b96,
+            shininess: 120
+        })
     );
 
-    // A.3 - LUNAS
+    // A.3 - Lunas con grupos anidados
 
-    // PLANETA 1
-    // Agregar planeta 1 a un grupo
+    // Planeta 1
     const grupoPlaneta1 = new THREE.Group();
     grupoPlaneta1.add(planeta1);
     scene.add(grupoPlaneta1);
 
-    // Posicionar planeta 1
     planeta1.position.x = 12;
 
-    // Luna del planeta 1
     const luna1 = new THREE.Mesh(
         new THREE.SphereGeometry(0.4, 16, 16),
-        new THREE.MeshStandardMaterial({color: 0xaaaaaa})
+        new THREE.MeshStandardMaterial({ color: 0xaaaaaa })
     );
-    luna1.position.x = 2; // Distancia de la luna al planeta
+    luna1.position.x = 2;
 
-    // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 1
     const grupoLuna1 = new THREE.Group();
-    grupoLuna1.add(luna1);
-
-    // Posicionar el grupo de la luna en la misma posición del planeta
     grupoLuna1.position.x = 12;
-
-    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoLuna1.add(luna1);
     grupoPlaneta1.add(grupoLuna1);
 
-    // PLANETA 2
-    // Agregar planeta 2 a un grupo y agregar anillo al planeta
+    // Planeta 2
     const grupoPlaneta2 = new THREE.Group();
     planeta2.add(anillo2);
     grupoPlaneta2.add(planeta2);
     scene.add(grupoPlaneta2);
 
-    // Posicionar planeta 2
     planeta2.position.x = 18;
 
-    // Luna del planeta 2
     const luna2 = new THREE.Mesh(
         new THREE.SphereGeometry(0.7, 16, 16),
-        new THREE.MeshStandardMaterial({color: 0x998877})
+        new THREE.MeshStandardMaterial({ color: 0x998877 })
     );
-    luna2.position.x = 4.5; // Distancia de la luna al planeta 2
+    luna2.position.x = 4.5;
 
-    // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 2
     const grupoLuna2 = new THREE.Group();
-    grupoLuna2.add(luna2);
-
-    // Posicionar el grupo de la luna en la misma posición del planeta
     grupoLuna2.position.x = 18;
-
-    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoLuna2.add(luna2);
     grupoPlaneta2.add(grupoLuna2);
 
-    // PLANETA 3
-    // Agregar planeta 3 a un grupo
+    // Planeta 3
     const grupoPlaneta3 = new THREE.Group();
     grupoPlaneta3.add(planeta3);
     scene.add(grupoPlaneta3);
 
-    // Posicionar planeta 3
     planeta3.position.x = 30;
 
-    // Luna del planeta 3
     const luna3 = new THREE.Mesh(
         new THREE.SphereGeometry(1.2, 16, 16),
-        new THREE.MeshStandardMaterial({color: 0x777777})
+        new THREE.MeshStandardMaterial({ color: 0x777777 })
     );
-    luna3.position.x = 6; // Distancia de la luna al planeta 3
+    luna3.position.x = 6;
 
-    // Agregar luna a un grupo y hacerlo orbitrar alrededor del planeta 3
     const grupoLuna3 = new THREE.Group();
-    grupoLuna3.add(luna3);
-
-    // Posicionar el grupo de la luna en la misma posición del planeta
     grupoLuna3.position.x = 30;
-
-    // La luna orbita alrededor del planeta mediante su propio grupo
+    grupoLuna3.add(luna3);
     grupoPlaneta3.add(grupoLuna3);
 
     // ============================================================
-    //  PARTE B — EFECTOS VISUALES
-    //  (Solo se AGREGA contenido nuevo. No se modifica la Parte A.)
+    // PARTE B — EFECTOS VISUALES
     // ============================================================
 
-    // ------------------------------------------------------------
-    // B.1 - FONDO ESTELAR
-    // Sistema de Points con 5000 partículas distribuidas de forma
-    // aleatoria y uniforme sobre una esfera de gran radio.
-    // ------------------------------------------------------------
-    const cantidadEstrellas = 5000;                                  // > 3000 (requisito mínimo)
+    // B.1 - Fondo estelar con Points
+    const cantidadEstrellas = 5000;
     const posicionesEstrellas = new Float32Array(cantidadEstrellas * 3);
 
     for (let i = 0; i < cantidadEstrellas; i++) {
-        // Dirección aleatoria UNIFORME sobre la esfera (método de muestreo esférico)
         const u = Math.random();
         const v = Math.random();
-        const theta = 2 * Math.PI * u;          // ángulo azimutal
-        const phi = Math.acos(2 * v - 1);       // ángulo polar (evita acumulación en los polos)
-        const radio = 300 + Math.random() * 200; // radio grande: entre 300 y 500 (dentro del far de la cámara = 1000)
+        const theta = 2 * Math.PI * u;
+        const phi = Math.acos(2 * v - 1);
+        const radio = 300 + Math.random() * 200;
 
-        posicionesEstrellas[i * 3]     = radio * Math.sin(phi) * Math.cos(theta); // x
-        posicionesEstrellas[i * 3 + 1] = radio * Math.sin(phi) * Math.sin(theta); // y
-        posicionesEstrellas[i * 3 + 2] = radio * Math.cos(phi);                   // z
+        posicionesEstrellas[i * 3] = radio * Math.sin(phi) * Math.cos(theta);
+        posicionesEstrellas[i * 3 + 1] = radio * Math.sin(phi) * Math.sin(theta);
+        posicionesEstrellas[i * 3 + 2] = radio * Math.cos(phi);
     }
 
     const geometriaEstrellas = new THREE.BufferGeometry();
-    geometriaEstrellas.setAttribute('position', new THREE.BufferAttribute(posicionesEstrellas, 3));
+    geometriaEstrellas.setAttribute(
+        'position',
+        new THREE.BufferAttribute(posicionesEstrellas, 3)
+    );
 
     const materialEstrellas = new THREE.PointsMaterial({
         color: 0xffffff,
@@ -199,85 +192,74 @@
     const estrellas = new THREE.Points(geometriaEstrellas, materialEstrellas);
     scene.add(estrellas);
 
-    // ------------------------------------------------------------
-    // B.2 - CINTURÓN DE ASTEROIDES
-    // Points + BufferGeometry, entre el Planeta 2 (r=18) y el
-    // Planeta 3 (r=30). Distribución en anillo: ángulo aleatorio
-    // + radio aleatorio dentro de un rango. Rota lentamente en Y.
-    // ------------------------------------------------------------
-    const cantidadAsteroides = 2500;                                  // > 2000 (requisito mínimo)
+    // B.2 - Cinturón de asteroides entre planeta 2 y planeta 3
+    const cantidadAsteroides = 2500;
     const posicionesAsteroides = new Float32Array(cantidadAsteroides * 3);
 
-    const radioInterno = 21;   // queda por fuera de la órbita del Planeta 2 (18)
-    const radioExterno = 27;   // queda por dentro de la órbita del Planeta 3 (30)
+    const radioInterno = 21;
+    const radioExterno = 27;
 
     for (let i = 0; i < cantidadAsteroides; i++) {
-        const angulo = Math.random() * Math.PI * 2;                       // ángulo aleatorio (0 a 2π)
-        const radio = radioInterno + Math.random() * (radioExterno - radioInterno); // radio aleatorio dentro del rango
+        const angulo = Math.random() * Math.PI * 2;
+        const radio = radioInterno + Math.random() * (radioExterno - radioInterno);
 
-        posicionesAsteroides[i * 3]     = Math.cos(angulo) * radio;       // x  -> plano XZ (horizontal)
-        posicionesAsteroides[i * 3 + 1] = (Math.random() - 0.5) * 1.2;    // y  -> ligero grosor vertical del cinturón
-        posicionesAsteroides[i * 3 + 2] = Math.sin(angulo) * radio;       // z
+        posicionesAsteroides[i * 3] = Math.cos(angulo) * radio;
+        posicionesAsteroides[i * 3 + 1] = (Math.random() - 0.5) * 1.2;
+        posicionesAsteroides[i * 3 + 2] = Math.sin(angulo) * radio;
     }
 
     const geometriaAsteroides = new THREE.BufferGeometry();
-    geometriaAsteroides.setAttribute('position', new THREE.BufferAttribute(posicionesAsteroides, 3));
+    geometriaAsteroides.setAttribute(
+        'position',
+        new THREE.BufferAttribute(posicionesAsteroides, 3)
+    );
 
     const materialAsteroides = new THREE.PointsMaterial({
-        color: 0xaaaaaa,        // gris-blanco sugerido
+        color: 0xaaaaaa,
         size: 0.25,
         sizeAttenuation: true
     });
 
-    const cinturonAsteroides = new THREE.Points(geometriaAsteroides, materialAsteroides);
+    const cinturonAsteroides = new THREE.Points(
+        geometriaAsteroides,
+        materialAsteroides
+    );
     scene.add(cinturonAsteroides);
 
-    // ------------------------------------------------------------
-    // B.3 - LÍNEAS DE ÓRBITA
-    // EllipseCurve + BufferGeometry + THREE.Line, una por planeta.
-    // El radio es EXACTAMENTE la distancia orbital de cada planeta.
-    // ------------------------------------------------------------
+    // B.3 - Líneas de órbita
     function crearOrbita(radio) {
         const curva = new THREE.EllipseCurve(
-            0, 0,          // centro (x, y)
-            radio, radio,  // radioX = radioY  -> círculo perfecto
-            0, 2 * Math.PI,// ángulo inicial y final
-            false,         // sentido horario
-            0              // rotación
+            0, 0,
+            radio, radio,
+            0, 2 * Math.PI,
+            false,
+            0
         );
 
-        const puntos = curva.getPoints(128); // 128 segmentos -> círculo suave
+        const puntos = curva.getPoints(128);
         const geometria = new THREE.BufferGeometry().setFromPoints(puntos);
 
         const material = new THREE.LineBasicMaterial({
-            color: 0x555555,    // gris tenue / oscuro
+            color: 0x555555,
             transparent: true,
-            opacity: 0.35       // sutil
+            opacity: 0.35
         });
 
         const linea = new THREE.Line(geometria, material);
-        linea.rotation.x = Math.PI / 2; // pasar la curva del plano XY al plano XZ (plano orbital)
+        linea.rotation.x = Math.PI / 2;
         return linea;
     }
 
-    // Una línea por planeta, con el radio igual a su distancia orbital
-    scene.add(crearOrbita(12)); // Planeta 1  (planeta1.position.x = 12)
-    scene.add(crearOrbita(18)); // Planeta 2  (planeta2.position.x = 18)
-    scene.add(crearOrbita(30)); // Planeta 3  (planeta3.position.x = 30)
+    scene.add(crearOrbita(12));
+    scene.add(crearOrbita(18));
+    scene.add(crearOrbita(30));
 
-    // ------------------------------------------------------------
-    // B.4 - ILUMINACIÓN AMBIENTE
-    // REQUISITO YA CUMPLIDO EN LA PARTE A: arriba se creó
-    // 'luzAmbiente' = new THREE.AmbientLight(0xffffff, 0.15), con
-    // intensidad 0.15, que está dentro del rango pedido (0.05–0.15).
-    // No se agrega otra para no duplicar la luz ambiente.
-    // ------------------------------------------------------------
+    // B.4 - Iluminación ambiente
+    // Cumplido con luzAmbiente = new THREE.AmbientLight(0xffffff, 0.15)
 
-    // Velocidades de rotación de los efectos de la Parte B
-    const velCinturon = 0.0008;   // rotación lenta del cinturón de asteroides en Y
-    const velEstrellas = 0.0002;  // rotación muy lenta del fondo estelar (detalle opcional)
-
-    // Velocidades de rotación y órbita
+    // ============================================================
+    // ANIMACIÓN
+    // ============================================================
     const velocidades = {
         sol: 0.002,
         p1: 0.026,
@@ -288,29 +270,28 @@
         l3: 0.02
     };
 
-    // Animación
+    const velCinturon = 0.0008;
+    const velEstrellas = 0.0002;
+
     function animar() {
         requestAnimationFrame(animar);
 
-        // Rotación del sol
         sol.rotation.y += velocidades.sol;
 
-        // Órbita y rotación de los planetas
         grupoPlaneta1.rotation.y += velocidades.p1;
         grupoPlaneta2.rotation.y += velocidades.p2;
         grupoPlaneta3.rotation.y += velocidades.p3;
 
-        // Órbita y rotación de las lunas
         grupoLuna1.rotation.y += velocidades.l1;
         grupoLuna2.rotation.y += velocidades.l2;
         grupoLuna3.rotation.y += velocidades.l3;
 
-        // --- PARTE B: rotación de efectos visuales (líneas agregadas, no modifican la Parte A) ---
-        cinturonAsteroides.rotation.y += velCinturon; // B.2: el cinturón rota lentamente en Y
-        estrellas.rotation.y += velEstrellas;         // B.1: leve giro del fondo estelar
+        cinturonAsteroides.rotation.y += velCinturon;
+        estrellas.rotation.y += velEstrellas;
 
         renderer.render(scene, camera);
     }
+
     animar();
 </script>
 </body>
