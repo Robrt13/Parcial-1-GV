@@ -66,10 +66,36 @@
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.2);
       box-shadow: 0 18px 55px rgba(0,0,0,0.45);
+      display: none;
+      pointer-events: none;
     }
     #instructions h2 { margin: 0 0 12px; font-size: 28px; }
     #instructions p { margin: 8px 0; color: #f0f0f0; }
     #instructions .small { font-size: 13px; color: #cfcfcf; margin-top: 16px; }
+    #loading-screen p { margin-bottom: 12px; font-size: 15px; }
+    #loading-screen div { width: 280px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 99px; overflow: hidden; }
+    #loading-bar { height: 100%; width: 0%; background: #ffffff; border-radius: 99px; transition: width 0.2s ease; }
+    #loading-pct { margin-top: 10px; font-size: 13px; color: #aaa; }
+    #proximity-panel {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(420px, calc(100vw - 32px));
+      padding: 16px 20px;
+      border-radius: 14px;
+      background: rgba(8, 12, 18, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    #proximity-panel.visible { opacity: 1; }
+    #proximity-panel h3 { margin: 0 0 6px 0; font-size: 16px; color: #ffffff; letter-spacing: 0.3px; }
+    #proximity-panel p { margin: 0; font-size: 13px; color: #d0d0d0; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -84,6 +110,17 @@
       <p>Haz clic para entrar y caminar libremente por el museo.</p>
       <p><strong>WASD</strong> moverse · <strong>Mouse</strong> mirar · <strong>Shift</strong> correr · <strong>Esc</strong> salir</p>
     </div>
+    <div id="loading-screen">
+      <p>Cargando al guía...</p>
+      <div>
+        <div id="loading-bar"></div>
+      </div>
+      <p id="loading-pct">0%</p>
+    </div>
+  </div>
+  <div id="proximity-panel">
+    <h3 id="panel-name"></h3>
+    <p id="panel-description"></p>
   </div>
 
   <script type="importmap">
@@ -98,6 +135,7 @@
   <script type="module">
     import * as THREE from 'three';
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     // ============================================================
     // CONFIGURACIÓN BASE
@@ -271,6 +309,14 @@
     ];
 
     const exhibitions = [];
+    // Cambiar la descripción según las exhibiciones que se agreguen en la Parte B. (GABY)
+    const exhibitionData = [
+      {name: "Sample name 1", description: "Sample description 1"},
+      {name: "Sample name 2", description: "Sample description 2"},
+      {name: "Sample name 3", description: "Sample description 3"},
+      {name: "Sample name 4", description: "Sample description 4"},
+      {name: "Sample name 5", description: "Sample description 5"}
+    ];
 
     pedestalPositions.forEach((pos, index) => {
       const pedestal = new THREE.Mesh(
@@ -296,9 +342,13 @@
       art.position.set(pos.x, 1.75, pos.z);
       art.castShadow = true;       // A.3: exhibiciones emiten sombra
       art.receiveShadow = true;
-      art.name = `Exhibición temporal ${index + 1}`;
+      art.name = exhibitionData[index].name;
       scene.add(art);
-      exhibitions.push(art);
+      exhibitions.push({
+        mesh: art,
+        position: new THREE.Vector3(pos.x, 1.75, pos.z),
+        data: exhibitionData[index]
+      });
       
       // ============================================================
       // LUCES DE ACENTO
@@ -312,26 +362,54 @@
       scene.add(accentLight);
     });
 
-    // Guía temporal: queda listo con castShadow para cumplir A.3 hasta que se agregue el GLTF en D.1
-    const guide = new THREE.Group();
-    const guideBody = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.35, 1.1, 8, 16),
-      new THREE.MeshStandardMaterial({ color: 0x2c7be5, roughness: 0.45 })
-    );
-    guideBody.position.y = 1.05;
-    guideBody.castShadow = true;
-    guideBody.receiveShadow = true;
+    // ============================================================
+    // GUÍA DEL MUSEO
+    // ============================================================
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingBar    = document.getElementById('loading-bar');
+    const loadingPct    = document.getElementById('loading-pct');
 
-    const guideHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.27, 24, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffd2a6, roughness: 0.55 })
+    let mixer;
+    const loader = new GLTFLoader();
+    loader.load(
+      'https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
+      (gltf) => {
+        const guide = gltf.scene;
+        guide.position.set(-2, 0, 12);
+        guide.scale.set(0.5, 0.5, 0.5);
+        guide.rotation.y = Math.PI / 2;
+        guide.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        scene.add(guide);
+
+        mixer = new THREE.AnimationMixer(guide);
+        mixer.clipAction(gltf.animations[2]).play();
+
+        loadingBar.style.width = '100%';
+        loadingPct.textContent = '100%';
+
+        setTimeout(() => {
+          loadingScreen.style.display = 'none';
+          document.getElementById('instructions').style.display = 'block';
+          enableEntry();
+        }, 1000);
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const pct = (xhr.loaded / xhr.total) * 100;
+          loadingBar.style.width = pct + '%';
+          loadingPct.textContent = Math.round(pct) + '%';
+        }
+      },
+      (error) => {
+        console.error('Error al cargar el modelo:', error);
+        loadingPct.textContent = 'Error al cargar';
+      }
     );
-    guideHead.position.y = 1.9;
-    guideHead.castShadow = true;
-    guide.add(guideBody, guideHead);
-    guide.position.set(0, 0, 12.2);
-    guide.name = 'Guía temporal del museo';
-    scene.add(guide);
 
     // ============================================================
     // ILUMINACIÓN INTERIOR
@@ -361,8 +439,10 @@
     const blocker = document.getElementById('blocker');
     const instructions = document.getElementById('instructions');
 
-    instructions.addEventListener('click', () => controls.lock());
-    blocker.addEventListener('click', () => controls.lock());
+    function enableEntry() {
+      instructions.addEventListener('click', () => controls.lock());
+      blocker.addEventListener('click', () => controls.lock());
+    }
 
     controls.addEventListener('lock', () => {
       blocker.style.display = 'none';
@@ -434,19 +514,50 @@
     // ============================================================
     // ANIMACIÓN
     // ============================================================
+    const panel         = document.getElementById('proximity-panel');
+    const panelName     = document.getElementById('panel-name');
+    const panelDesc     = document.getElementById('panel-description');
+    const PROXIMITY_RADIUS = 5;
+    let   activeExhibition = null;
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const elapsed = clock.elapsedTime;
 
       updatePlayerMovement(delta);
+      // ============================================================
+      // DETECCIÓN DE EXHIBICIONES CERCANAS
+      // ============================================================
+      const camPos = controls.getObject().position;
+      let nearest = null;
+      let nearestDist = Infinity;
 
-      exhibitions.forEach((art, index) => {
-        art.rotation.y += delta * (0.5 + index * 0.08);
-        if (index === 4) art.position.y = 1.75 + Math.sin(elapsed * 1.4) * 0.08;
+      exhibitions.forEach((item) => {
+        const dist = camPos.distanceTo(item.position);
+        if (dist < PROXIMITY_RADIUS && dist < nearestDist) {
+          nearestDist = dist;
+          nearest = item;
+        }
       });
 
-      guide.rotation.y = Math.sin(elapsed * 0.5) * 0.18;
+      if (nearest !== activeExhibition) {
+        activeExhibition = nearest;
+
+        if (nearest) {
+          panelName.textContent = nearest.data.name;
+          panelDesc.textContent = nearest.data.description;
+          panel.classList.add('visible');
+        } else {
+          panel.classList.remove('visible');
+        }
+      }
+
+      exhibitions.forEach((item, index) => {
+        item.mesh.rotation.y += delta * (0.5 + index * 0.08);
+        if (index === 4) item.mesh.position.y = 1.75 + Math.sin(elapsed * 1.4) * 0.08;
+      });
+
+      if (mixer) mixer.update(delta);
       renderer.render(scene, camera);
     }
 
