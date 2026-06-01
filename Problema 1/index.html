@@ -9,7 +9,6 @@
             overflow: hidden;
             background: black;
         }
-
         canvas {
             display: block;
         }
@@ -17,7 +16,55 @@
 </head>
 
 <body>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<!-- C.2 Panel de información -->
+<div id="panel-info" style="
+  display: none;
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(10, 10, 20, 0.92);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 24px 28px;
+  color: #fff;
+  min-width: 240px;
+  z-index: 100;
+  font-family: sans-serif;
+">
+  <button id="btn-cerrar" style="
+    position: absolute; top: 10px; right: 14px;
+    background: none; border: none; color: #aaa;
+    font-size: 22px; cursor: pointer; line-height: 1;
+  ">×</button>
+  <h2 id="panel-nombre" style="margin: 0 0 12px; font-size: 18px; font-weight: 500;"></h2>
+  <table style="font-size: 14px; border-collapse: collapse; width: 100%;">
+    <tr><td style="color:#aaa; padding: 4px 8px 4px 0;">Material</td><td id="panel-material"></td></tr>
+    <tr><td style="color:#aaa; padding: 4px 8px 4px 0;">Distancia al sol</td><td id="panel-distancia"></td></tr>
+    <tr><td style="color:#aaa; padding: 4px 8px 4px 0;">Lunas</td><td id="panel-lunas"></td></tr>
+  </table>
+</div>
+
+<!-- C.3 HUD de velocidad -->
+<div id="hud-velocidad" style="
+  position: fixed;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10,10,20,0.75);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 8px 20px;
+  color: #fff;
+  font-family: sans-serif;
+  font-size: 14px;
+  z-index: 100;
+  pointer-events: none;
+">
+  Velocidad: <span id="hud-valor">1.0×</span> &nbsp;|&nbsp;
+  <span style="color:#aaa;">+/− velocidad &nbsp; P pausar</span>
+</div>
 
 <script>
     // ============================================================
@@ -54,7 +101,7 @@
     const sol = new THREE.Mesh(solGeometria, solMaterial);
     scene.add(sol);
 
-    const luzSol = new THREE.PointLight(0xfbff8f, 75, 300);
+    const luzSol = new THREE.PointLight(0xfbff8f, 1.0, 300);
     luzSol.position.set(0, 0, 0);
     scene.add(luzSol);
 
@@ -258,6 +305,124 @@
     // Cumplido con luzAmbiente = new THREE.AmbientLight(0xffffff, 0.15)
 
     // ============================================================
+    // PARTE C — INTERACTIVIDAD
+    // ============================================================
+
+    // C.1 - OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 6;
+    controls.maxDistance = 400;
+
+    // C.2 - Raycaster y panel de información
+    const datosPlanetas = [
+        {
+            mesh: planeta1,
+            nombre: 'Piedrario',
+            material: 'MeshStandardMaterial — textura de imagen (mapa de Calisto), rugosidad 0.8, metalicidad 0.1',
+            distancia: '12 UA',
+            lunas: 1
+        },
+        {
+            mesh: planeta2,
+            nombre: 'Paturno',
+            material: 'MeshStandardMaterial — color sólido rojizo (#bf3813), rugosidad 0.4, metalicidad 0.5, con anillo TorusGeometry',
+            distancia: '18 UA',
+            lunas: 1
+        },
+        {
+            mesh: planeta3,
+            nombre: 'Nurano',
+            material: 'MeshPhongMaterial — color azul oscuro (#112b96), shininess 120 (superficie brillante especular)',
+            distancia: '30 UA',
+            lunas: 1
+        }
+    ];
+
+    const coloresOriginales = [null, 0xbf3813, 0x112b96];
+    const COLOR_SELECCIONADO = 0xffff00;
+    let planetaActivo = null;
+
+    const panel = document.getElementById('panel-info');
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    function deseleccionarPlaneta() {
+        if (planetaActivo === null) return;
+        const idx = planetaActivo;
+        datosPlanetas[idx].mesh.scale.setScalar(1);
+        if (idx > 0) {
+            datosPlanetas[idx].mesh.material.color.setHex(coloresOriginales[idx]);
+        }
+        planetaActivo = null;
+    }
+
+    function seleccionarPlaneta(idx) {
+        deseleccionarPlaneta();
+        planetaActivo = idx;
+        const d = datosPlanetas[idx];
+        d.mesh.scale.setScalar(1.35);
+        if (idx > 0) {
+            d.mesh.material.color.setHex(COLOR_SELECCIONADO);
+        }
+        document.getElementById('panel-nombre').textContent = d.nombre;
+        document.getElementById('panel-material').textContent = d.material;
+        document.getElementById('panel-distancia').textContent = d.distancia;
+        document.getElementById('panel-lunas').textContent = d.lunas;
+        panel.style.display = 'block';
+    }
+
+    function cerrarPanel() {
+        panel.style.display = 'none';
+        deseleccionarPlaneta();
+    }
+
+    document.getElementById('btn-cerrar').addEventListener('click', cerrarPanel);
+
+    renderer.domElement.addEventListener('click', (e) => {
+        mouse.x =  (e.clientX / window.innerWidth)  * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const meshes = datosPlanetas.map(d => d.mesh);
+        const intersecciones = raycaster.intersectObjects(meshes);
+
+        if (intersecciones.length > 0) {
+            const idx = meshes.indexOf(intersecciones[0].object);
+            seleccionarPlaneta(idx);
+        } else if (panel.style.display === 'block') {
+            cerrarPanel();
+        }
+    });
+
+    // C.3 - Control de velocidad con teclado
+    let multiplicador = 1.0;
+    let pausado = false;
+    const PASO = 0.25;
+    const MIN_VEL = 0.25;
+    const MAX_VEL = 4.0;
+
+    const hudValor = document.getElementById('hud-valor');
+
+    function actualizarHUD() {
+        hudValor.textContent = pausado ? 'PAUSA' : multiplicador.toFixed(2) + '×';
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === '+' || e.key === '=') {
+            multiplicador = Math.min(MAX_VEL, +(multiplicador + PASO).toFixed(2));
+            actualizarHUD();
+        } else if (e.key === '-') {
+            multiplicador = Math.max(MIN_VEL, +(multiplicador - PASO).toFixed(2));
+            actualizarHUD();
+        } else if (e.key === 'p' || e.key === 'P') {
+            pausado = !pausado;
+            actualizarHUD();
+        }
+    });
+
+    // ============================================================
     // ANIMACIÓN
     // ============================================================
     const velocidades = {
@@ -276,18 +441,24 @@
     function animar() {
         requestAnimationFrame(animar);
 
-        sol.rotation.y += velocidades.sol;
+        controls.update();
 
-        grupoPlaneta1.rotation.y += velocidades.p1;
-        grupoPlaneta2.rotation.y += velocidades.p2;
-        grupoPlaneta3.rotation.y += velocidades.p3;
+        if (!pausado) {
+            const m = multiplicador;
 
-        grupoLuna1.rotation.y += velocidades.l1;
-        grupoLuna2.rotation.y += velocidades.l2;
-        grupoLuna3.rotation.y += velocidades.l3;
+            sol.rotation.y += velocidades.sol * m;
 
-        cinturonAsteroides.rotation.y += velCinturon;
-        estrellas.rotation.y += velEstrellas;
+            grupoPlaneta1.rotation.y += velocidades.p1 * m;
+            grupoPlaneta2.rotation.y += velocidades.p2 * m;
+            grupoPlaneta3.rotation.y += velocidades.p3 * m;
+
+            grupoLuna1.rotation.y += velocidades.l1 * m;
+            grupoLuna2.rotation.y += velocidades.l2 * m;
+            grupoLuna3.rotation.y += velocidades.l3 * m;
+
+            cinturonAsteroides.rotation.y += velCinturon * m;
+            estrellas.rotation.y += velEstrellas * m;
+        }
 
         renderer.render(scene, camera);
     }
