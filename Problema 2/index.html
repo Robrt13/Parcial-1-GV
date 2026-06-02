@@ -297,8 +297,60 @@
       metalness: 0.18
     });
 
-    const exhibitionMaterialA = new THREE.MeshStandardMaterial({ color: 0xc08b47, roughness: 0.35, metalness: 0.75 });
-    const exhibitionMaterialB = new THREE.MeshStandardMaterial({ color: 0x6688cc, roughness: 0.4, metalness: 0.25 });
+    // ============================================================
+    // PARTE B: MATERIALES ESPECÍFICOS PARA CADA EXHIBICIÓN
+    // ============================================================
+    // Pieza 1: Metálico brillante (TorusKnot)
+    const material1 = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      roughness: 0.15,
+      metalness: 0.95
+    });
+
+    // Pieza 2: MeshPhongMaterial con textura (Icosahedron)
+    const texture2 = makeCanvasTexture(256, (ctx, s) => {
+      ctx.fillStyle = '#ff6b6b';
+      ctx.fillRect(0, 0, s, s);
+      for (let i = 0; i < 200; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.4})`;
+        ctx.fillRect(Math.random() * s, Math.random() * s, Math.random() * 20, Math.random() * 20);
+      }
+    }, 1, 1);
+    const material2 = new THREE.MeshPhongMaterial({
+      map: texture2,
+      shininess: 100
+    });
+
+    // Pieza 3: Con normalMap (Sphere)
+    const normalMap3 = makeCanvasTexture(256, (ctx, s) => {
+      ctx.fillStyle = '#8080ff';
+      ctx.fillRect(0, 0, s, s);
+      for (let y = 0; y < s; y += 16) {
+        for (let x = 0; x < s; x += 16) {
+          ctx.fillStyle = (x + y) / 16 % 2 === 0 ? '#9090ff' : '#7070ff';
+          ctx.fillRect(x, y, 16, 16);
+        }
+      }
+    }, 1, 1);
+    const material3 = new THREE.MeshStandardMaterial({
+      color: 0x4488ff,
+      normalMap: normalMap3,
+      roughness: 0.5,
+      metalness: 0.3
+    });
+
+    // Pieza 4: Grupo con múltiples materiales
+    const material4a = new THREE.MeshStandardMaterial({ color: 0xff00ff, metalness: 0.7, roughness: 0.3 });
+    const material4b = new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 0.4, roughness: 0.5 });
+
+    // Pieza 5: Con emisión (estudiante choice)
+    const material5 = new THREE.MeshStandardMaterial({
+      color: 0x00aa00,
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+      metalness: 0.6
+    });
 
     const pedestalPositions = [
       new THREE.Vector3(-8, 0, -7),
@@ -311,11 +363,11 @@
     const exhibitions = [];
     // Cambiar la descripción según las exhibiciones que se agreguen en la Parte B. (GABY)
     const exhibitionData = [
-      {name: "Sample name 1", description: "Sample description 1"},
-      {name: "Sample name 2", description: "Sample description 2"},
-      {name: "Sample name 3", description: "Sample description 3"},
-      {name: "Sample name 4", description: "Sample description 4"},
-      {name: "Sample name 5", description: "Sample description 5"}
+      {name: "Infinito Dorado", description: "Escultura de nudo toroidal en oro pulido. Simboliza la eternidad y la belleza matemática."},
+      {name: "Fragmentos Rojos", description: "Icosaedro con textura punteada. Representa la fragmentación de la luz en la geometría."},
+      {name: "Esfera Lumínica", description: "Esfera azul con relieve de normalidad. Emite una energía serena y meditativa."},
+      {name: "Dualidad Cromática", description: "Composición de cilindros entrelazados en magenta y cian. Contraste de perspectivas."},
+      {name: "Verde Radiante", description: "Pirámide iridiscente con emisión verdosa. Cuerpo que brilla con vida propia."}
     ];
 
     pedestalPositions.forEach((pos, index) => {
@@ -329,25 +381,61 @@
       pedestal.name = `Pedestal ${index + 1}`;
       scene.add(pedestal);
 
-      // Objetos simples temporales para demostrar castShadow de exhibiciones.
-      // En la Parte B pueden reemplazarse por las 5 piezas exigidas. (GABY)
+      // ============================================================
+      // PARTE B: GEOMETRÍAS Y MATERIALES ESPECÍFICOS PARA 5 EXHIBICIONES
+      // ============================================================
       let geometry;
-      if (index === 0) geometry = new THREE.TorusKnotGeometry(0.45, 0.15, 80, 12);
-      else if (index === 1) geometry = new THREE.IcosahedronGeometry(0.58, 1);
-      else if (index === 2) geometry = new THREE.SphereGeometry(0.55, 32, 16);
-      else if (index === 3) geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-      else geometry = new THREE.ConeGeometry(0.55, 1.05, 40);
+      let material;
+      let art;
 
-      const art = new THREE.Mesh(geometry, index % 2 === 0 ? exhibitionMaterialA : exhibitionMaterialB);
+      if (index === 0) {
+        // Pieza 1: TorusKnot con material metálico
+        geometry = new THREE.TorusKnotGeometry(0.45, 0.15, 80, 12);
+        art = new THREE.Mesh(geometry, material1);
+      } else if (index === 1) {
+        // Pieza 2: Icosahedron con MeshPhongMaterial y textura
+        geometry = new THREE.IcosahedronGeometry(0.58, 1);
+        art = new THREE.Mesh(geometry, material2);
+      } else if (index === 2) {
+        // Pieza 3: Sphere con normalMap
+        geometry = new THREE.SphereGeometry(0.55, 32, 16);
+        art = new THREE.Mesh(geometry, material3);
+      } else if (index === 3) {
+        // Pieza 4: Composición libre - grupo de cilindros en dos materiales
+        const group = new THREE.Group();
+        const cyl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16), material4a);
+        const cyl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 16), material4b);
+        cyl2.rotation.z = Math.PI / 2;
+        group.add(cyl1);
+        group.add(cyl2);
+        art = group;
+      } else {
+        // Pieza 5: Pirámide con emisión (free choice)
+        geometry = new THREE.ConeGeometry(0.55, 1.05, 8);
+        art = new THREE.Mesh(geometry, material5);
+      }
+
       art.position.set(pos.x, 1.75, pos.z);
-      art.castShadow = true;       // A.3: exhibiciones emiten sombra
+      art.castShadow = true;
       art.receiveShadow = true;
       art.name = exhibitionData[index].name;
+      art.userData = { originalScale: art.scale.clone(), originalColor: null };
+      
+      // Guardar color original para hover
+      if (art.isMesh) {
+        art.userData.originalColor = art.material.color.getHex();
+      } else if (art.isGroup) {
+        art.children.forEach(child => {
+          if (child.isMesh) child.userData.originalColor = child.material.color.getHex();
+        });
+      }
+      
       scene.add(art);
       exhibitions.push({
         mesh: art,
         position: new THREE.Vector3(pos.x, 1.75, pos.z),
-        data: exhibitionData[index]
+        data: exhibitionData[index],
+        isHovered: false
       });
       
       // ============================================================
@@ -428,6 +516,17 @@
       roomLight.shadow.mapSize.width = 1024;
       roomLight.shadow.mapSize.height = 1024;
       scene.add(roomLight);
+    });
+
+    // ============================================================
+    // RAYCASTER PARA DETECCIÓN DE HOVER
+    // ============================================================
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    document.addEventListener('mousemove', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     });
 
     // ============================================================
@@ -552,10 +651,66 @@
         }
       }
 
+      // ============================================================
+      // PARTE B: ANIMACIONES ESPECÍFICAS POR PIEZA
+      // ============================================================
       exhibitions.forEach((item, index) => {
-        item.mesh.rotation.y += delta * (0.5 + index * 0.08);
-        if (index === 4) item.mesh.position.y = 1.75 + Math.sin(elapsed * 1.4) * 0.08;
+        const mesh = item.mesh;
+        
+        // Pieza 1: Rotación continua en Y
+        if (index === 0) {
+          mesh.rotation.y += delta * 0.8;
+        }
+        // Pieza 2: Pulso de escala (Math.sin)
+        else if (index === 1) {
+          const pulse = 1 + Math.sin(elapsed * 2.5) * 0.15;
+          mesh.scale.set(pulse, pulse, pulse);
+        }
+        // Pieza 3: Rotación lenta en X e Y
+        else if (index === 2) {
+          mesh.rotation.x += delta * 0.3;
+          mesh.rotation.y += delta * 0.4;
+        }
+        // Pieza 4: Oscilación en Y (flotación)
+        else if (index === 3) {
+          mesh.position.y = 1.75 + Math.sin(elapsed * 1.2) * 0.12;
+        }
+        // Pieza 5: Rotación en Z (libre elección)
+        else if (index === 4) {
+          mesh.rotation.z += delta * 0.6;
+          mesh.rotation.y += delta * 0.3;
+        }
       });
+
+      // ============================================================
+      // RAYCASTER: DETECCIÓN Y RESALTADO DE HOVER
+      // ============================================================
+      if (controls.isLocked) {
+        raycaster.setFromCamera(mouse, camera);
+        const exhibitionMeshes = exhibitions.map(e => e.isGroup ? e.mesh.children : e.mesh).flat();
+        const intersects = raycaster.intersectObjects(exhibitionMeshes);
+
+        exhibitions.forEach(item => {
+          const meshesToCheck = item.mesh.isGroup ? item.mesh.children : [item.mesh];
+          const isIntersected = intersects.some(inter => meshesToCheck.includes(inter.object));
+          
+          if (isIntersected && !item.isHovered) {
+            item.isHovered = true;
+            meshesToCheck.forEach(m => {
+              if (m.material) {
+                m.material.emissive.setHex(0x444444);
+              }
+            });
+          } else if (!isIntersected && item.isHovered) {
+            item.isHovered = false;
+            meshesToCheck.forEach(m => {
+              if (m.material) {
+                m.material.emissive.setHex(0x000000);
+              }
+            });
+          }
+        });
+      }
 
       if (mixer) mixer.update(delta);
       renderer.render(scene, camera);
