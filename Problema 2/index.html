@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Problema 2 - Parte A | Galería 3D</title>
+  <title>Problema 2 - Galería 3D</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -100,7 +100,7 @@
 </head>
 <body>
   <div id="hud">
-    <h1>Problema 2 — Parte A: Arquitectura de la galería</h1>
+    <h1>Problema 2 — Galería de Arte 3D</h1>
     <p><strong>Controles:</strong> clic para caminar · W/A/S/D para moverse · mouse para mirar · Shift para correr · Esc para liberar el cursor.</p>
   </div>
   <div id="crosshair"></div>
@@ -137,9 +137,7 @@
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-    // ============================================================
     // CONFIGURACIÓN BASE
-    // ============================================================
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x08090c);
     scene.fog = new THREE.Fog(0x08090c, 28, 55);
@@ -150,23 +148,18 @@
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    // A.3 Sombras en toda la sala
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
-    // ============================================================
-    // TEXTURAS PROCEDURALES DIFERENTES
-    // Se generan con CanvasTexture para que el HTML sea único y no dependa de archivos locales.
-    // ============================================================
     function makeCanvasTexture(size, drawCallback, repeatX = 1, repeatY = 1) {
       const canvas = document.createElement('canvas');
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext('2d');
       drawCallback(ctx, size);
+
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
@@ -176,7 +169,7 @@
       return texture;
     }
 
-    // Piso: madera, tileada 8x8 como pide A.1
+    // PARTE A — ARQUITECTURA DE LA GALERÍA
     const floorTexture = makeCanvasTexture(512, (ctx, s) => {
       ctx.fillStyle = '#7a4a24';
       ctx.fillRect(0, 0, s, s);
@@ -198,7 +191,6 @@
       }
     }, 8, 8);
 
-    // Paredes: ladrillo/panel claro, diferente al piso
     const wallTexture = makeCanvasTexture(512, (ctx, s) => {
       ctx.fillStyle = '#d8d5cc';
       ctx.fillRect(0, 0, s, s);
@@ -217,7 +209,6 @@
       }
     }, 4, 1);
 
-    // Techo: paneles oscuros, diferente al piso y a las paredes
     const ceilingTexture = makeCanvasTexture(512, (ctx, s) => {
       ctx.fillStyle = '#20232a';
       ctx.fillRect(0, 0, s, s);
@@ -233,10 +224,6 @@
       }
     }, 8, 8);
 
-    // ============================================================
-    // A.1 SALA PRINCIPAL: PlaneGeometry para piso, techo y paredes
-    // Dimensiones mínimas: 30 x 30 unidades, 6 unidades de alto
-    // ============================================================
     const roomWidth = 30;
     const roomDepth = 30;
     const roomHeight = 6;
@@ -287,69 +274,10 @@
     createWall('Pared izquierda', roomDepth, roomHeight, new THREE.Vector3(-halfW, roomHeight / 2, 0), Math.PI / 2);
     createWall('Pared derecha', roomDepth, roomHeight, new THREE.Vector3(halfW, roomHeight / 2, 0), -Math.PI / 2);
 
-    // ============================================================
-    // A.2 PEDESTALES PARA EXHIBICIONES
-    // 5 pedestales con primitivas, material pulido y distribución simétrica
-    // ============================================================
     const pedestalMaterial = new THREE.MeshStandardMaterial({
       color: 0xf1eee5,
       roughness: 0.18,
       metalness: 0.18
-    });
-
-    // ============================================================
-    // PARTE B: MATERIALES ESPECÍFICOS PARA CADA EXHIBICIÓN
-    // ============================================================
-    // Pieza 1: Metálico brillante (TorusKnot)
-    const material1 = new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      roughness: 0.15,
-      metalness: 0.95
-    });
-
-    // Pieza 2: MeshPhongMaterial con textura (Icosahedron)
-    const texture2 = makeCanvasTexture(256, (ctx, s) => {
-      ctx.fillStyle = '#ff6b6b';
-      ctx.fillRect(0, 0, s, s);
-      for (let i = 0; i < 200; i++) {
-        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.4})`;
-        ctx.fillRect(Math.random() * s, Math.random() * s, Math.random() * 20, Math.random() * 20);
-      }
-    }, 1, 1);
-    const material2 = new THREE.MeshPhongMaterial({
-      map: texture2,
-      shininess: 100
-    });
-
-    // Pieza 3: Con normalMap (Sphere)
-    const normalMap3 = makeCanvasTexture(256, (ctx, s) => {
-      ctx.fillStyle = '#8080ff';
-      ctx.fillRect(0, 0, s, s);
-      for (let y = 0; y < s; y += 16) {
-        for (let x = 0; x < s; x += 16) {
-          ctx.fillStyle = (x + y) / 16 % 2 === 0 ? '#9090ff' : '#7070ff';
-          ctx.fillRect(x, y, 16, 16);
-        }
-      }
-    }, 1, 1);
-    const material3 = new THREE.MeshStandardMaterial({
-      color: 0x4488ff,
-      normalMap: normalMap3,
-      roughness: 0.5,
-      metalness: 0.3
-    });
-
-    // Pieza 4: Grupo con múltiples materiales
-    const material4a = new THREE.MeshStandardMaterial({ color: 0xff00ff, metalness: 0.7, roughness: 0.3 });
-    const material4b = new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 0.4, roughness: 0.5 });
-
-    // Pieza 5: Con emisión (estudiante choice)
-    const material5 = new THREE.MeshStandardMaterial({
-      color: 0x00aa00,
-      emissive: 0x00ff00,
-      emissiveIntensity: 0.6,
-      roughness: 0.2,
-      metalness: 0.6
     });
 
     const pedestalPositions = [
@@ -360,14 +288,73 @@
       new THREE.Vector3(0, 0, -1)
     ];
 
+    // PARTE B — EXHIBICIONES
+    const material1 = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      roughness: 0.15,
+      metalness: 0.95
+    });
+
+    const texture2 = makeCanvasTexture(256, (ctx, s) => {
+      ctx.fillStyle = '#ff6b6b';
+      ctx.fillRect(0, 0, s, s);
+      for (let i = 0; i < 200; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.4})`;
+        ctx.fillRect(Math.random() * s, Math.random() * s, Math.random() * 20, Math.random() * 20);
+      }
+    });
+
+    const material2 = new THREE.MeshPhongMaterial({
+      map: texture2,
+      shininess: 100
+    });
+
+    const normalMap3 = makeCanvasTexture(256, (ctx, s) => {
+      ctx.fillStyle = '#8080ff';
+      ctx.fillRect(0, 0, s, s);
+      for (let y = 0; y < s; y += 16) {
+        for (let x = 0; x < s; x += 16) {
+          ctx.fillStyle = (x + y) / 16 % 2 === 0 ? '#9090ff' : '#7070ff';
+          ctx.fillRect(x, y, 16, 16);
+        }
+      }
+    });
+
+    const material3 = new THREE.MeshStandardMaterial({
+      color: 0x4488ff,
+      normalMap: normalMap3,
+      roughness: 0.5,
+      metalness: 0.3
+    });
+
+    const material4a = new THREE.MeshStandardMaterial({
+      color: 0xff00ff,
+      metalness: 0.7,
+      roughness: 0.3
+    });
+
+    const material4b = new THREE.MeshStandardMaterial({
+      color: 0x00ffff,
+      metalness: 0.4,
+      roughness: 0.5
+    });
+
+    const material5 = new THREE.MeshStandardMaterial({
+      color: 0x00aa00,
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+      metalness: 0.6
+    });
+
     const exhibitions = [];
-    // Cambiar la descripción según las exhibiciones que se agreguen en la Parte B. (GABY)
+
     const exhibitionData = [
-      {name: "Infinito Dorado", description: "Escultura de nudo toroidal en oro pulido. Simboliza la eternidad y la belleza matemática."},
-      {name: "Fragmentos Rojos", description: "Icosaedro con textura punteada. Representa la fragmentación de la luz en la geometría."},
-      {name: "Esfera Lumínica", description: "Esfera azul con relieve de normalidad. Emite una energía serena y meditativa."},
-      {name: "Dualidad Cromática", description: "Composición de cilindros entrelazados en magenta y cian. Contraste de perspectivas."},
-      {name: "Verde Radiante", description: "Pirámide iridiscente con emisión verdosa. Cuerpo que brilla con vida propia."}
+      { name: "Infinito Dorado", description: "Escultura de nudo toroidal en oro pulido. Simboliza la eternidad y la belleza matemática." },
+      { name: "Fragmentos Rojos", description: "Icosaedro con textura punteada. Representa la fragmentación de la luz en la geometría." },
+      { name: "Esfera Lumínica", description: "Esfera azul con relieve de normalidad. Emite una energía serena y meditativa." },
+      { name: "Dualidad Cromática", description: "Composición de cilindros entrelazados en magenta y cian. Contraste de perspectivas." },
+      { name: "Verde Radiante", description: "Pirámide iridiscente con emisión verdosa. Cuerpo que brilla con vida propia." }
     ];
 
     pedestalPositions.forEach((pos, index) => {
@@ -381,66 +368,62 @@
       pedestal.name = `Pedestal ${index + 1}`;
       scene.add(pedestal);
 
-      // ============================================================
-      // PARTE B: GEOMETRÍAS Y MATERIALES ESPECÍFICOS PARA 5 EXHIBICIONES
-      // ============================================================
-      let geometry;
-      let material;
       let art;
 
       if (index === 0) {
-        // Pieza 1: TorusKnot con material metálico
-        geometry = new THREE.TorusKnotGeometry(0.45, 0.15, 80, 12);
-        art = new THREE.Mesh(geometry, material1);
+        art = new THREE.Mesh(new THREE.TorusKnotGeometry(0.45, 0.15, 80, 12), material1);
       } else if (index === 1) {
-        // Pieza 2: Icosahedron con MeshPhongMaterial y textura
-        geometry = new THREE.IcosahedronGeometry(0.58, 1);
-        art = new THREE.Mesh(geometry, material2);
+        art = new THREE.Mesh(new THREE.IcosahedronGeometry(0.58, 1), material2);
       } else if (index === 2) {
-        // Pieza 3: Sphere con normalMap
-        geometry = new THREE.SphereGeometry(0.55, 32, 16);
-        art = new THREE.Mesh(geometry, material3);
+        art = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 16), material3);
       } else if (index === 3) {
-        // Pieza 4: Composición libre - grupo de cilindros en dos materiales
         const group = new THREE.Group();
-        const cyl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16), material4a);
-        const cyl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 16), material4b);
+
+        const cyl1 = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16),
+          material4a
+        );
+
+        const cyl2 = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.25, 0.25, 0.8, 16),
+          material4b
+        );
+
         cyl2.rotation.z = Math.PI / 2;
-        group.add(cyl1);
-        group.add(cyl2);
+        group.add(cyl1, cyl2);
         art = group;
       } else {
-        // Pieza 5: Pirámide con emisión (free choice)
-        geometry = new THREE.ConeGeometry(0.55, 1.05, 8);
-        art = new THREE.Mesh(geometry, material5);
+        art = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.05, 8), material5);
       }
 
       art.position.set(pos.x, 1.75, pos.z);
-      art.castShadow = true;
-      art.receiveShadow = true;
       art.name = exhibitionData[index].name;
       art.userData = { originalScale: art.scale.clone(), originalColor: null };
-      
-      // Guardar color original para hover
-      if (art.isMesh) {
-        art.userData.originalColor = art.material.color.getHex();
-      } else if (art.isGroup) {
-        art.children.forEach(child => {
-          if (child.isMesh) child.userData.originalColor = child.material.color.getHex();
+
+      if (art.isGroup) {
+        art.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            child.userData.originalColor = child.material.color.getHex();
+          }
         });
+      } else {
+        art.castShadow = true;
+        art.receiveShadow = true;
+        art.userData.originalColor = art.material.color.getHex();
       }
-      
+
       scene.add(art);
+
       exhibitions.push({
         mesh: art,
         position: new THREE.Vector3(pos.x, 1.75, pos.z),
         data: exhibitionData[index],
         isHovered: false
       });
-      
-      // ============================================================
-      // LUCES DE ACENTO
-      // ============================================================
+
+      // C.2 - Luz de acento por exhibición
       const accentLight = new THREE.SpotLight(0xffffff, 7, 0, Math.PI / 8, 0.3);
       accentLight.position.set(pos.x, roomHeight, pos.z);
       accentLight.target = art;
@@ -450,15 +433,14 @@
       scene.add(accentLight);
     });
 
-    // ============================================================
-    // GUÍA DEL MUSEO
-    // ============================================================
+    // PARTE D — GUÍA DEL MUSEO
     const loadingScreen = document.getElementById('loading-screen');
-    const loadingBar    = document.getElementById('loading-bar');
-    const loadingPct    = document.getElementById('loading-pct');
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingPct = document.getElementById('loading-pct');
 
     let mixer;
     const loader = new GLTFLoader();
+
     loader.load(
       'https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
       (gltf) => {
@@ -466,12 +448,14 @@
         guide.position.set(-2, 0, 12);
         guide.scale.set(0.5, 0.5, 0.5);
         guide.rotation.y = Math.PI / 2;
+
         guide.traverse((child) => {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
           }
         });
+
         scene.add(guide);
 
         mixer = new THREE.AnimationMixer(guide);
@@ -499,17 +483,15 @@
       }
     );
 
-    // ============================================================
-    // ILUMINACIÓN INTERIOR
-    // ============================================================
+    // PARTE C — ILUMINACIÓN INTERIOR
     const roomLightsConfig = [
-      {position: new THREE.Vector3(10, roomHeight - 1, 10), color: 0xff0000, intensity: 10},
-      {position: new THREE.Vector3(10, roomHeight - 1, -10), color: 0x0000ff, intensity: 15},
-      {position: new THREE.Vector3(-10, roomHeight - 1, 10), color: 0xffff00, intensity: 20},
-      {position: new THREE.Vector3(-10, roomHeight - 1, -10), color: 0x00ff00, intensity: 25},
+      { position: new THREE.Vector3(10, roomHeight - 1, 10), color: 0xff0000, intensity: 10 },
+      { position: new THREE.Vector3(10, roomHeight - 1, -10), color: 0x0000ff, intensity: 15 },
+      { position: new THREE.Vector3(-10, roomHeight - 1, 10), color: 0xffff00, intensity: 20 },
+      { position: new THREE.Vector3(-10, roomHeight - 1, -10), color: 0x00ff00, intensity: 25 }
     ];
 
-    roomLightsConfig.forEach((config, index) => {
+    roomLightsConfig.forEach((config) => {
       const roomLight = new THREE.PointLight(config.color, config.intensity);
       roomLight.position.copy(config.position);
       roomLight.castShadow = true;
@@ -518,20 +500,7 @@
       scene.add(roomLight);
     });
 
-    // ============================================================
-    // RAYCASTER PARA DETECCIÓN DE HOVER
-    // ============================================================
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    document.addEventListener('mousemove', (event) => {
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    });
-
-    // ============================================================
-    // CAMINAR LIBREMENTE: PointerLockControls
-    // ============================================================
+    // NAVEGACIÓN
     const controls = new PointerLockControls(camera, document.body);
     scene.add(controls.getObject());
 
@@ -603,36 +572,27 @@
       controls.moveRight(-velocity.x * delta);
       controls.moveForward(-velocity.z * delta);
 
-      // Mantener la cámara dentro de la sala y a altura de una persona.
       const object = controls.getObject();
       object.position.y = 1.7;
       object.position.x = THREE.MathUtils.clamp(object.position.x, -halfW + 0.8, halfW - 0.8);
       object.position.z = THREE.MathUtils.clamp(object.position.z, -halfD + 0.8, halfD - 0.8);
     }
 
-    // ============================================================
-    // ANIMACIÓN
-    // ============================================================
-    const panel         = document.getElementById('proximity-panel');
-    const panelName     = document.getElementById('panel-name');
-    const panelDesc     = document.getElementById('panel-description');
+    // D.2 - Sistema de proximidad
+    const panel = document.getElementById('proximity-panel');
+    const panelName = document.getElementById('panel-name');
+    const panelDesc = document.getElementById('panel-description');
     const PROXIMITY_RADIUS = 5;
-    let   activeExhibition = null;
-    function animate() {
-      requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const elapsed = clock.elapsedTime;
+    let activeExhibition = null;
 
-      updatePlayerMovement(delta);
-      // ============================================================
-      // DETECCIÓN DE EXHIBICIONES CERCANAS
-      // ============================================================
+    function updateProximityPanel() {
       const camPos = controls.getObject().position;
       let nearest = null;
       let nearestDist = Infinity;
 
       exhibitions.forEach((item) => {
         const dist = camPos.distanceTo(item.position);
+
         if (dist < PROXIMITY_RADIUS && dist < nearestDist) {
           nearestDist = dist;
           nearest = item;
@@ -650,77 +610,87 @@
           panel.classList.remove('visible');
         }
       }
+    }
 
-      // ============================================================
-      // PARTE B: ANIMACIONES ESPECÍFICAS POR PIEZA
-      // ============================================================
+    // B - Hover con Raycaster
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    document.addEventListener('mousemove', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    });
+
+    function updateHover() {
+      if (!controls.isLocked) return;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      const exhibitionMeshes = exhibitions
+        .map(e => e.mesh.isGroup ? e.mesh.children : e.mesh)
+        .flat();
+
+      const intersects = raycaster.intersectObjects(exhibitionMeshes);
+
+      exhibitions.forEach(item => {
+        const meshesToCheck = item.mesh.isGroup ? item.mesh.children : [item.mesh];
+        const isIntersected = intersects.some(inter => meshesToCheck.includes(inter.object));
+
+        if (isIntersected && !item.isHovered) {
+          item.isHovered = true;
+          meshesToCheck.forEach(m => {
+            if (m.material && m.material.emissive) {
+              m.material.emissive.setHex(0x444444);
+            }
+          });
+        } else if (!isIntersected && item.isHovered) {
+          item.isHovered = false;
+          meshesToCheck.forEach(m => {
+            if (m.material && m.material.emissive) {
+              m.material.emissive.setHex(0x000000);
+            }
+          });
+        }
+      });
+    }
+
+    // ANIMACIÓN
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const elapsed = clock.elapsedTime;
+
+      updatePlayerMovement(delta);
+      updateProximityPanel();
+      updateHover();
+
       exhibitions.forEach((item, index) => {
         const mesh = item.mesh;
-        
-        // Pieza 1: Rotación continua en Y
+
         if (index === 0) {
           mesh.rotation.y += delta * 0.8;
-        }
-        // Pieza 2: Pulso de escala (Math.sin)
-        else if (index === 1) {
+        } else if (index === 1) {
           const pulse = 1 + Math.sin(elapsed * 2.5) * 0.15;
           mesh.scale.set(pulse, pulse, pulse);
-        }
-        // Pieza 3: Rotación lenta en X e Y
-        else if (index === 2) {
+        } else if (index === 2) {
           mesh.rotation.x += delta * 0.3;
           mesh.rotation.y += delta * 0.4;
-        }
-        // Pieza 4: Oscilación en Y (flotación)
-        else if (index === 3) {
+        } else if (index === 3) {
           mesh.position.y = 1.75 + Math.sin(elapsed * 1.2) * 0.12;
-        }
-        // Pieza 5: Rotación en Z (libre elección)
-        else if (index === 4) {
+        } else if (index === 4) {
           mesh.rotation.z += delta * 0.6;
           mesh.rotation.y += delta * 0.3;
         }
       });
 
-      // ============================================================
-      // RAYCASTER: DETECCIÓN Y RESALTADO DE HOVER
-      // ============================================================
-      if (controls.isLocked) {
-        raycaster.setFromCamera(mouse, camera);
-        const exhibitionMeshes = exhibitions.map(e => e.isGroup ? e.mesh.children : e.mesh).flat();
-        const intersects = raycaster.intersectObjects(exhibitionMeshes);
-
-        exhibitions.forEach(item => {
-          const meshesToCheck = item.mesh.isGroup ? item.mesh.children : [item.mesh];
-          const isIntersected = intersects.some(inter => meshesToCheck.includes(inter.object));
-          
-          if (isIntersected && !item.isHovered) {
-            item.isHovered = true;
-            meshesToCheck.forEach(m => {
-              if (m.material) {
-                m.material.emissive.setHex(0x444444);
-              }
-            });
-          } else if (!isIntersected && item.isHovered) {
-            item.isHovered = false;
-            meshesToCheck.forEach(m => {
-              if (m.material) {
-                m.material.emissive.setHex(0x000000);
-              }
-            });
-          }
-        });
-      }
-
       if (mixer) mixer.update(delta);
+
       renderer.render(scene, camera);
     }
 
     animate();
 
-    // ============================================================
-    // RESPONSIVE
-    // ============================================================
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
